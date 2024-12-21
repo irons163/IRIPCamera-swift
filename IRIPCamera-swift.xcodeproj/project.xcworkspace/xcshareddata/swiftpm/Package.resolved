@@ -1,0 +1,24 @@
+{
+  "originHash" : "6e68ced55fb59f1afa534a41cd7120a4fb7915d799b6152b82f0fbc4653bd61e",
+  "pins" : [
+    {
+      "identity" : "alamofire",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Alamofire/Alamofire.git",
+      "state" : {
+        "revision" : "513364f870f6bfc468f9d2ff0a95caccc10044c5",
+        "version" : "5.10.2"
+      }
+    },
+    {
+      "identity" : "irplayer-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/irons163/IRPlayer-swift",
+      "state" : {
+        "revision" : "914811e0fb6805cc12cf10b65d55f93b0adc73d9",
+        "version" : "0.4.0"
+      }
+    }
+  ],
+  "version" : 3
+}
