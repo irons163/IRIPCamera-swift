@@ -1,0 +1,574 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		B5CA2B342D1662E7002507B7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B5CA2B152D1662E5002507B7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B5CA2B1C2D1662E5002507B7;
+			remoteInfo = "IRIPCamera-swift";
+		};
+		B5CA2B3E2D1662E7002507B7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B5CA2B152D1662E5002507B7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B5CA2B1C2D1662E5002507B7;
+			remoteInfo = "IRIPCamera-swift";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		B5CA2B1D2D1662E5002507B7 /* IRIPCamera-swift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "IRIPCamera-swift.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B5CA2B332D1662E7002507B7 /* IRIPCamera-swiftTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "IRIPCamera-swiftTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B5CA2B3D2D1662E7002507B7 /* IRIPCamera-swiftUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "IRIPCamera-swiftUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B5CA2B452D1662E7002507B7 /* Exceptions for "IRIPCamera-swift" folder in "IRIPCamera-swift" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B5CA2B1C2D1662E5002507B7 /* IRIPCamera-swift */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		B5CA2B1F2D1662E5002507B7 /* IRIPCamera-swift */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B5CA2B452D1662E7002507B7 /* Exceptions for "IRIPCamera-swift" folder in "IRIPCamera-swift" target */,
+			);
+			path = "IRIPCamera-swift";
+			sourceTree = "<group>";
+		};
+		B5CA2B362D1662E7002507B7 /* IRIPCamera-swiftTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "IRIPCamera-swiftTests";
+			sourceTree = "<group>";
+		};
+		B5CA2B402D1662E7002507B7 /* IRIPCamera-swiftUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "IRIPCamera-swiftUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B5CA2B1A2D1662E5002507B7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B5CA2B302D1662E7002507B7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B5CA2B3A2D1662E7002507B7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		B5CA2B142D1662E5002507B7 = {
+			isa = PBXGroup;
+			children = (
+				B5CA2B1F2D1662E5002507B7 /* IRIPCamera-swift */,
+				B5CA2B362D1662E7002507B7 /* IRIPCamera-swiftTests */,
+				B5CA2B402D1662E7002507B7 /* IRIPCamera-swiftUITests */,
+				B5CA2B1E2D1662E5002507B7 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B5CA2B1E2D1662E5002507B7 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B5CA2B1D2D1662E5002507B7 /* IRIPCamera-swift.app */,
+				B5CA2B332D1662E7002507B7 /* IRIPCamera-swiftTests.xctest */,
+				B5CA2B3D2D1662E7002507B7 /* IRIPCamera-swiftUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B5CA2B1C2D1662E5002507B7 /* IRIPCamera-swift */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B5CA2B462D1662E7002507B7 /* Build configuration list for PBXNativeTarget "IRIPCamera-swift" */;
+			buildPhases = (
+				B5CA2B192D1662E5002507B7 /* Sources */,
+				B5CA2B1A2D1662E5002507B7 /* Frameworks */,
+				B5CA2B1B2D1662E5002507B7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B5CA2B1F2D1662E5002507B7 /* IRIPCamera-swift */,
+			);
+			name = "IRIPCamera-swift";
+			packageProductDependencies = (
+			);
+			productName = "IRIPCamera-swift";
+			productReference = B5CA2B1D2D1662E5002507B7 /* IRIPCamera-swift.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B5CA2B322D1662E7002507B7 /* IRIPCamera-swiftTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B5CA2B4B2D1662E7002507B7 /* Build configuration list for PBXNativeTarget "IRIPCamera-swiftTests" */;
+			buildPhases = (
+				B5CA2B2F2D1662E7002507B7 /* Sources */,
+				B5CA2B302D1662E7002507B7 /* Frameworks */,
+				B5CA2B312D1662E7002507B7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B5CA2B352D1662E7002507B7 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B5CA2B362D1662E7002507B7 /* IRIPCamera-swiftTests */,
+			);
+			name = "IRIPCamera-swiftTests";
+			packageProductDependencies = (
+			);
+			productName = "IRIPCamera-swiftTests";
+			productReference = B5CA2B332D1662E7002507B7 /* IRIPCamera-swiftTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		B5CA2B3C2D1662E7002507B7 /* IRIPCamera-swiftUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B5CA2B4E2D1662E7002507B7 /* Build configuration list for PBXNativeTarget "IRIPCamera-swiftUITests" */;
+			buildPhases = (
+				B5CA2B392D1662E7002507B7 /* Sources */,
+				B5CA2B3A2D1662E7002507B7 /* Frameworks */,
+				B5CA2B3B2D1662E7002507B7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B5CA2B3F2D1662E7002507B7 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				B5CA2B402D1662E7002507B7 /* IRIPCamera-swiftUITests */,
+			);
+			name = "IRIPCamera-swiftUITests";
+			packageProductDependencies = (
+			);
+			productName = "IRIPCamera-swiftUITests";
+			productReference = B5CA2B3D2D1662E7002507B7 /* IRIPCamera-swiftUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B5CA2B152D1662E5002507B7 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					B5CA2B1C2D1662E5002507B7 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					B5CA2B322D1662E7002507B7 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = B5CA2B1C2D1662E5002507B7;
+					};
+					B5CA2B3C2D1662E7002507B7 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = B5CA2B1C2D1662E5002507B7;
+					};
+				};
+			};
+			buildConfigurationList = B5CA2B182D1662E5002507B7 /* Build configuration list for PBXProject "IRIPCamera-swift" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = B5CA2B142D1662E5002507B7;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B5CA2B1E2D1662E5002507B7 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B5CA2B1C2D1662E5002507B7 /* IRIPCamera-swift */,
+				B5CA2B322D1662E7002507B7 /* IRIPCamera-swiftTests */,
+				B5CA2B3C2D1662E7002507B7 /* IRIPCamera-swiftUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B5CA2B1B2D1662E5002507B7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B5CA2B312D1662E7002507B7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B5CA2B3B2D1662E7002507B7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B5CA2B192D1662E5002507B7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B5CA2B2F2D1662E7002507B7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B5CA2B392D1662E7002507B7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B5CA2B352D1662E7002507B7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B5CA2B1C2D1662E5002507B7 /* IRIPCamera-swift */;
+			targetProxy = B5CA2B342D1662E7002507B7 /* PBXContainerItemProxy */;
+		};
+		B5CA2B3F2D1662E7002507B7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B5CA2B1C2D1662E5002507B7 /* IRIPCamera-swift */;
+			targetProxy = B5CA2B3E2D1662E7002507B7 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		B5CA2B472D1662E7002507B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T6VV6T753H;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "IRIPCamera-swift/Info.plist";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "irons163.IRIPCamera-swift";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B5CA2B482D1662E7002507B7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T6VV6T753H;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "IRIPCamera-swift/Info.plist";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "irons163.IRIPCamera-swift";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B5CA2B492D1662E7002507B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		B5CA2B4A2D1662E7002507B7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B5CA2B4C2D1662E7002507B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T6VV6T753H;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "irons163.IRIPCamera-swiftTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IRIPCamera-swift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/IRIPCamera-swift";
+			};
+			name = Debug;
+		};
+		B5CA2B4D2D1662E7002507B7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T6VV6T753H;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "irons163.IRIPCamera-swiftTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/IRIPCamera-swift.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/IRIPCamera-swift";
+			};
+			name = Release;
+		};
+		B5CA2B4F2D1662E7002507B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T6VV6T753H;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "irons163.IRIPCamera-swiftUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "IRIPCamera-swift";
+			};
+			name = Debug;
+		};
+		B5CA2B502D1662E7002507B7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T6VV6T753H;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "irons163.IRIPCamera-swiftUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "IRIPCamera-swift";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B5CA2B182D1662E5002507B7 /* Build configuration list for PBXProject "IRIPCamera-swift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5CA2B492D1662E7002507B7 /* Debug */,
+				B5CA2B4A2D1662E7002507B7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B5CA2B462D1662E7002507B7 /* Build configuration list for PBXNativeTarget "IRIPCamera-swift" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5CA2B472D1662E7002507B7 /* Debug */,
+				B5CA2B482D1662E7002507B7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B5CA2B4B2D1662E7002507B7 /* Build configuration list for PBXNativeTarget "IRIPCamera-swiftTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5CA2B4C2D1662E7002507B7 /* Debug */,
+				B5CA2B4D2D1662E7002507B7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B5CA2B4E2D1662E7002507B7 /* Build configuration list for PBXNativeTarget "IRIPCamera-swiftUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5CA2B4F2D1662E7002507B7 /* Debug */,
+				B5CA2B502D1662E7002507B7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = B5CA2B152D1662E5002507B7 /* Project object */;
+}
