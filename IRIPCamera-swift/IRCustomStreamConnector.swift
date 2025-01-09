@@ -37,15 +37,13 @@ class IRCustomStreamConnector: IRStreamConnector, UIAlertViewDelegate {
         deviceConnector?.loginToDevice(getRTSPInfo: true, checkPrevious: false, ignoreLoginCache: true)
     }
 
-    override func stopStreaming(_ stopForever: Bool) -> Int {
-        if let connector = deviceConnector {
-            if stopForever {
-                connector.stopConnectionAction()
-                connector.delegate = nil
-                deviceConnector = nil
-            }
+    override func stopStreaming(_ stopForever: Bool) {
+        guard let connector = deviceConnector, stopForever else {
+            return
         }
-        return 0
+        connector.stopConnectionAction()
+        connector.delegate = nil
+        deviceConnector = nil
     }
 
     override func changeStream(_ stream: Int) {

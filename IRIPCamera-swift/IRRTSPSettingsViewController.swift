@@ -141,7 +141,11 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
         if streamConnectionTypeSwitch.isOn {
             userDefaults.set(streamConnectionTypeSwitch.isOn, forKey: ENABLE_RTSP_URL_KEY)
             if rtspUrlTextfield.text == "demo" {
-                rtspUrlTextfield.text = "rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"
+                rtspUrlTextfield.text = "rtsp://stream.strba.sk:1935/strba/VYHLAD_JAZERO.stream"
+            } else if rtspUrlTextfield.text == "demo2" {
+                rtspUrlTextfield.text = "rtsp://807e9439d5ca.entrypoint.cloud.wowza.com:1935/app-rC94792j/068b9c9a_stream2"
+            } else if rtspUrlTextfield.text == "demo3" {
+                rtspUrlTextfield.text = "rtsp://77.110.228.219/axis-media/media.amp"
             }
             userDefaults.set(rtspUrlTextfield.text, forKey: RTSP_URL_KEY)
             userDefaults.synchronize()

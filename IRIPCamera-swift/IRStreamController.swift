@@ -11,8 +11,10 @@ import IRPlayerSwift
 
 enum IRStreamControllerStatus: Int {
     case none
+    case buffering
     case preparingToPlay
     case readyToPlay
+    case playing
     case playToEnd
     case failed
 }
@@ -64,9 +66,13 @@ class IRStreamController: NSObject {
 //    private var rtspStreamer: RTSPReceiver?
     private var streamConnector: IRStreamConnector?
 
-    weak var audioDelegate: AnyObject?
     weak var eventDelegate: IRStreamControllerDelegate?
-    weak var videoView: IRPlayerImp?
+    weak var videoView: IRPlayerImp? {
+        didSet {
+            videoView?.registerPlayerNotification(target: self,
+                                              stateAction: #selector(stateAction(_:)))
+        }
+    }
 
     // MARK: - Initializers
     override init() {
@@ -97,11 +103,12 @@ class IRStreamController: NSObject {
         streamConnector?.startStreamConnection()
     }
 
-    func stopStreaming(stopForever: Bool) -> Int {
+    func stopStreaming(stopForever: Bool) {
         stopStreamingFlag = true
         stopForeverFlag = stopForever
-//        rtspStreamer?.stopConnection(stopForever)
-        return streamConnector?.stopStreaming(stopForever) ?? 0
+        videoView?.pause()
+        streamConnector?.stopStreaming(stopForever)
+        connected(false)
     }
 
     func changeStream(_ stream: Int) {
@@ -166,7 +173,7 @@ class IRStreamController: NSObject {
     func connectSuccess() {
         reconnectTimes = 0
         stopStreamingFlag = false
-        eventDelegate?.connectResult(self, connection: true, micSupport: false, speakerSupport: false)
+        connected(true)
     }
 
     func connectFail(byType type: Int, errorDesc: String) {
@@ -175,6 +182,27 @@ class IRStreamController: NSObject {
 
     func videoLoss(withErrorCode code: Int, msg: String) {
         reconnectToDevice()
+    }
+
+    // MARK: - Notification Handlers
+    @objc func stateAction(_ notification: Notification) {
+        guard let userInfo = notification.userInfo else { return }
+
+        let state = IRState.state(fromUserInfo: userInfo)
+        switch state.current {
+        case .buffering:
+            eventDelegate?.streamControllerStatusChanged(.buffering)
+            break
+        case .readyToPlay:
+            connectSuccess()
+        case .playing:
+            eventDelegate?.streamControllerStatusChanged(.playing)
+        case .failed:
+            reconnectToDevice()
+            break
+        default:
+            break
+        }
     }
 }
 
@@ -195,7 +223,7 @@ extension IRStreamController: IRStreamConnectorDelegate {
         }
 
         eventDelegate?.showErrorMessage(strShow)
-        showHideLoading(false)
+        connected(false)
     }
 
     func startStreaming(with response: IRStreamConnectionResponse?) {
@@ -212,36 +240,20 @@ extension IRStreamController: IRStreamConnectorDelegate {
         aryStreamInfo = response?.streamsInfo
         currentURL = response?.rtspURL
 
-        /*
-        rtspStreamer?.stopConnection(false)
-        rtspStreamer = nil
-         */
+        self.videoView?.pause()
 
-        guard let currentURL = currentURL else { return }
-
-        DispatchQueue.global().async { [weak self] in
-            guard let self = self else { return }
-            /*
-            self.rtspStreamer = RTSPReceiver(device: self.deviceInfo,
-                                             url: currentURL,
-                                             useTCP: self.useTCP)
-            self.rtspStreamer?.setEventDelegate(self)
-            self.rtspStreamer?.setChannel(self.channel)
-            self.rtspStreamer?.videoDecoder?.showView = self.videoView?.videoInput
-            self.rtspStreamer?.audioDecoder?.delegate = self.audioDelegate
-            self.rtspStreamer?.startConnection()
-             */
-            self.stopStreamingFlag = false
+        guard let currentURL = currentURL else {
+            connected(false)
+            return
         }
+
+        let input = MyIRFFVideoInput(outputType: .decoder)
+        self.videoView?.replaceVideoWithURL(contentURL: NSURL(string: currentURL), videoType: .normal, videoInput: input)
     }
 
-    private func showHideLoading(_ connected: Bool) {
+    private func connected(_ connected: Bool) {
         DispatchQueue.main.async {
-            if connected {
-                self.eventDelegate?.connectResult(self, connection: true, micSupport: false, speakerSupport: false)
-            } else {
-                self.eventDelegate?.connectResult(self, connection: false, micSupport: false, speakerSupport: false)
-            }
+            self.eventDelegate?.connectResult(self, connection: connected, micSupport: false, speakerSupport: false)
         }
     }
 }

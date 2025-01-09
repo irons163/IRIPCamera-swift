@@ -33,9 +33,8 @@ class IRStreamConnector: NSObject {
         }
     }
 
-    func stopStreaming(_ stopForever: Bool) -> Int {
+    func stopStreaming(_ stopForever: Bool) {
         // Placeholder for additional stop streaming logic if needed.
-        return 0
     }
 
     func changeStream(_ stream: Int) {

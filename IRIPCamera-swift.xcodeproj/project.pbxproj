@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B5CA2B532D166418002507B7 /* IRPlayer in Frameworks */ = {isa = PBXBuildFile; productRef = B5CA2B522D166418002507B7 /* IRPlayer */; };
 		B5CA2B632D1682F5002507B7 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = B5CA2B622D1682F5002507B7 /* Alamofire */; };
+		B5CE50802D19ABC100CB3683 /* IRPlayer in Frameworks */ = {isa = PBXBuildFile; productRef = B5CE507F2D19ABC100CB3683 /* IRPlayer */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,7 +70,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B5CA2B532D166418002507B7 /* IRPlayer in Frameworks */,
+				B5CE50802D19ABC100CB3683 /* IRPlayer in Frameworks */,
 				B5CA2B632D1682F5002507B7 /* Alamofire in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -132,8 +132,8 @@
 			);
 			name = "IRIPCamera-swift";
 			packageProductDependencies = (
-				B5CA2B522D166418002507B7 /* IRPlayer */,
 				B5CA2B622D1682F5002507B7 /* Alamofire */,
+				B5CE507F2D19ABC100CB3683 /* IRPlayer */,
 			);
 			productName = "IRIPCamera-swift";
 			productReference = B5CA2B1D2D1662E5002507B7 /* IRIPCamera-swift.app */;
@@ -218,8 +218,8 @@
 			mainGroup = B5CA2B142D1662E5002507B7;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				B5CA2B512D166418002507B7 /* XCRemoteSwiftPackageReference "IRPlayer-swift" */,
 				B5CA2B612D1682F5002507B7 /* XCRemoteSwiftPackageReference "Alamofire" */,
+				B5CE507E2D19ABC100CB3683 /* XCLocalSwiftPackageReference "../IRPlayer-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B5CA2B1E2D1662E5002507B7 /* Products */;
@@ -583,15 +583,14 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		B5CA2B512D166418002507B7 /* XCRemoteSwiftPackageReference "IRPlayer-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/irons163/IRPlayer-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.0.0;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		B5CE507E2D19ABC100CB3683 /* XCLocalSwiftPackageReference "../IRPlayer-swift" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../IRPlayer-swift";
 		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
 		B5CA2B612D1682F5002507B7 /* XCRemoteSwiftPackageReference "Alamofire" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
@@ -603,15 +602,14 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		B5CA2B522D166418002507B7 /* IRPlayer */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = B5CA2B512D166418002507B7 /* XCRemoteSwiftPackageReference "IRPlayer-swift" */;
-			productName = IRPlayer;
-		};
 		B5CA2B622D1682F5002507B7 /* Alamofire */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B5CA2B612D1682F5002507B7 /* XCRemoteSwiftPackageReference "Alamofire" */;
 			productName = Alamofire;
+		};
+		B5CE507F2D19ABC100CB3683 /* IRPlayer */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = IRPlayer;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

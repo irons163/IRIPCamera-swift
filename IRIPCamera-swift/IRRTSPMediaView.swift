@@ -18,14 +18,24 @@ class IRRTSPMediaView: UIView, IRStreamControllerDelegate {
     @IBOutlet weak var loadingActivity: UIActivityIndicatorView!
     @IBOutlet weak var infoLabel: UILabel!
 
+    private let delayedTask = DelayedTask()
+
     var player: IRPlayerImp! {
         didSet {
             guard let playerView = player.view else {
                 return
             }
             imageView = UIImageView(frame: playerView.frame)
+            imageView.backgroundColor = .systemGroupedBackground
+            imageView.contentMode = .scaleAspectFit
             playerView.addSubview(imageView)
             videoView.insertSubview(playerView, at: 0)
+            NSLayoutConstraint.activate([
+                imageView.topAnchor.constraint(equalTo: playerView.topAnchor),
+                imageView.bottomAnchor.constraint(equalTo: playerView.bottomAnchor),
+                imageView.leadingAnchor.constraint(equalTo: playerView.leadingAnchor),
+                imageView.trailingAnchor.constraint(equalTo: playerView.trailingAnchor),
+            ])
 
             setupConstraints(for: imageView, in: videoView)
             setupConstraints(for: playerView, in: videoView)
@@ -102,19 +112,26 @@ class IRRTSPMediaView: UIView, IRStreamControllerDelegate {
         streamController?.startStreamConnection()
     }
 
-    func stopStreaming(stopForever: Bool) -> Int {
+    func stopStreaming(stopForever: Bool) {
         streamController?.stopStreaming(stopForever: stopForever)
-        return 0
     }
 
     // MARK: - IRStreamControllerDelegate
     func streamControllerStatusChanged(_ status: IRStreamControllerStatus) {
         switch status {
+        case .buffering:
+            delayedTask.schedule(after: 2.0) { [weak self] in
+                guard let self else { return }
+                loadingActivity.startAnimating()
+            }
         case .preparingToPlay:
             loadingActivity.startAnimating()
-            imageView.image = UIImage(named: "landscape_1.png")
+            imageView.image = UIImage(named: "webcam")
             imageView.isHidden = false
             infoLabel.isHidden = true
+        case .playing:
+            delayedTask.cancel()
+            loadingActivity.stopAnimating()
         default:
             break
         }
@@ -124,12 +141,12 @@ class IRRTSPMediaView: UIView, IRStreamControllerDelegate {
         loadingActivity.stopAnimating()
 
         if !connection {
-            imageView.image = UIImage(named: "landscape_linkfail.png")
+            imageView.image = UIImage(named: "webcam_off.png")
             imageView.isHidden = false
             return
         }
 
-        imageView.image = UIImage(named: "landscape_1.png")
+        imageView.image = UIImage(named: "webcam.png")
         imageView.isHidden = true
 
         if player.renderModes?.isEmpty != false {
