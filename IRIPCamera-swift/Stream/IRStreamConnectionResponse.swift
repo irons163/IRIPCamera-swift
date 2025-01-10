@@ -11,5 +11,4 @@ class IRStreamConnectionResponse {
     var rtspURL: String?
     var deviceModelName: String?
     var streamsInfo: [Any]?
-    // var mediaParameter: MediaParameter? // Uncomment if `MediaParameter` is defined in your project.
 }

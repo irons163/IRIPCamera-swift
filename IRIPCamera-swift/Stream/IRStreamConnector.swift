@@ -40,8 +40,4 @@ class IRStreamConnector: NSObject {
     func changeStream(_ stream: Int) {
         // Placeholder for stream change logic if needed.
     }
-
-    func getErrorCode() -> Int {
-        return -1
-    }
 }

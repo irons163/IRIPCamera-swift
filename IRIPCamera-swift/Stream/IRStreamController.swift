@@ -21,49 +21,30 @@ enum IRStreamControllerStatus: Int {
 
 protocol IRStreamControllerDelegate: AnyObject {
     func connectResult(_ videoView: Any, connection: Bool, micSupport: Bool, speakerSupport: Bool)
-    func recordingFailed(withErrorCode code: Int, desc: String)
-    func finishRecording(showLoadingIcon: Bool)
     func showErrorMessage(_ msg: String)
     func streamControllerStatusChanged(_ status: IRStreamControllerStatus)
-    #if DEV
-    func checkIsAutoLiveOn() -> Bool
-    #endif
-    func updatedVideoModes()
+    func updatedVideoModes(_ modes: [IRGLRenderMode]?)
 }
 
 extension IRStreamControllerDelegate {
-    func recordingFailed(withErrorCode code: Int, desc: String) { }
-    func finishRecording(showLoadingIcon: Bool) { }
-    func updatedVideoModes() { }
+    func updatedVideoModes(_ modes: [IRGLRenderMode]?) { }
 }
 
 class IRStreamController: NSObject {
 
-    // MARK: - Properties
-    private var httpRequest: StaticHttpRequest?
+    var deviceInfo: DeviceClass?
+    private var httpRequest: HttpRequest?
     private var channel: Int = 0
-    private var aryRtspURL: [String] = []
     private var aryStreamInfo: [Any]?
-    private var aryIPRatio: [Int] = []
     private var availableStreams: Int = 0
     private var deviceStreamMode: Int = 0
     private var reconnectTimes: Int = 0
     private var stopStreamingFlag: Bool = false
-    private var useTCP: Bool = false
-    private var selectedFlag: Bool = false
     private var stopForeverFlag: Bool = false
-    private var showAuthorityAlertFlag: Bool = false
     private var currentURL: String?
-    private var currentIPRatio: Int = 0
-    private var deviceInfo: DeviceClass?
     private var token: String?
-    private var errorMsg: String?
-    private var modes: [IRGLRenderMode]?
+
     private var parameter: IRMediaParameter?
-    private var imageView: UIImageView?
-    private var borderLayer: CALayer?
-    private var streamingQueue: DispatchQueue?
-//    private var rtspStreamer: RTSPReceiver?
     private var streamConnector: IRStreamConnector?
 
     weak var eventDelegate: IRStreamControllerDelegate?
@@ -77,8 +58,7 @@ class IRStreamController: NSObject {
     // MARK: - Initializers
     override init() {
         super.init()
-        initStreamingQueue()
-        httpRequest = StaticHttpRequest.shared
+        httpRequest = HttpRequest.shared
     }
 
     convenience init(rtspURL: String) {
@@ -94,7 +74,7 @@ class IRStreamController: NSObject {
         if let customStreamConnector = streamConnector as? IRCustomStreamConnector {
             customStreamConnector.deviceInfo = device
         }
-        setDeviceClass(device, channel: 0)
+        self.deviceInfo = device
     }
 
     // MARK: - Streaming
@@ -112,30 +92,14 @@ class IRStreamController: NSObject {
     }
 
     func changeStream(_ stream: Int) {
-        guard let deviceInfo = deviceInfo else { return }
-        if deviceInfo.streamNO != stream {
-            stopStreaming(stopForever: false)
-            streamConnector?.changeStream(stream)
-        }
+        stopStreaming(stopForever: false)
+        streamConnector?.changeStream(stream)
     }
 
     func reconnectToDevice() {
         guard !stopStreamingFlag, reconnectTimes < MAX_RETRY_TIMES else { return }
         reconnectTimes += 1
         streamConnector?.startStreamConnection()
-    }
-
-    // MARK: - Helpers
-    private func initStreamingQueue() {
-        if streamingQueue == nil {
-            streamingQueue = DispatchQueue(label: "streaming.queue", qos: .background)
-        }
-    }
-
-    func setDeviceClass(_ deviceInfo: DeviceClass, channel: Int) {
-        self.deviceInfo = deviceInfo
-        self.deviceInfo?.streamInfo = nil
-        self.channel = channel
     }
 
     func createFisheyeModes(with parameter: IRMediaParameter?) -> [IRGLRenderMode] {
@@ -210,7 +174,6 @@ extension IRStreamController: IRStreamConnectorDelegate {
 
     func connectFail(byType type: ConnectorErrorType, errorDesc: String?) {
         var strShow = NSLocalizedString("ReconnectStreamConnectFail", comment: "")
-        var errorCode = -99999
 
         switch type {
         case .authorizationError:
@@ -218,7 +181,6 @@ extension IRStreamController: IRStreamConnectorDelegate {
         case .notSupported:
             strShow = NSLocalizedString("DeiceNitSupported", comment: "")
         default:
-            errorCode = -1
             strShow = NSLocalizedString("ConnectFail", comment: "")
         }
 
@@ -227,14 +189,13 @@ extension IRStreamController: IRStreamConnectorDelegate {
     }
 
     func startStreaming(with response: IRStreamConnectionResponse?) {
-        if modes == nil, response?.deviceModelName == "FisheyeCAM" {
+        if response?.deviceModelName == "FisheyeCAM" {
             if parameter == nil {
                 parameter = IRFisheyeParameter(width: 1440, height: 1024, up: false, rx: 510, ry: 510, cx: 680, cy: 524, latmax: 75)
             }
-            modes = createFisheyeModes(with: parameter)
-            eventDelegate?.updatedVideoModes()
-        } else if modes == nil {
-            eventDelegate?.updatedVideoModes()
+            eventDelegate?.updatedVideoModes(createFisheyeModes(with: parameter))
+        } else {
+            eventDelegate?.updatedVideoModes([IRGLRenderMode2D()])
         }
 
         aryStreamInfo = response?.streamsInfo

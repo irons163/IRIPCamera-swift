@@ -11,7 +11,7 @@ import CoreMotion
 
 class IRCustomStreamConnector: IRStreamConnector, UIAlertViewDelegate {
     
-    private var httpRequest: StaticHttpRequest?
+    private var httpRequest: HttpRequest?
     private var streamInfoArray: [String] = []
     var deviceConnector: DeviceConnector?
     var deviceInfo: DeviceClass?
@@ -20,16 +20,14 @@ class IRCustomStreamConnector: IRStreamConnector, UIAlertViewDelegate {
     override func startStreamConnection() {
         if deviceConnector == nil {
             deviceConnector = DeviceConnector(
-                address: GroupAddress(dataAddress: deviceInfo?.deviceAddress ?? "", commandAddress: deviceInfo?.httpCMDAddress ?? ""),
-                port: GroupPort(dataMultiPort: deviceInfo?.httpPort ?? MultiPort.initial(), commandMultiPort: deviceInfo?.httpCMDPort ?? MultiPort.initial()),
+                address: GroupAddress(dataAddress: deviceInfo?.deviceAddress ?? "", commandAddress: ""),
+                port: GroupPort(dataMultiPort: deviceInfo?.httpPort ?? MultiPort.initial(), commandMultiPort: MultiPort.initial()),
                 user: deviceInfo?.userName ?? "",
                 password: deviceInfo?.password ?? "",
                 delegate: self,
                 deviceInfo: deviceInfo,
                 state: .loginConnector,
-                type: .ipcam,
-                scheme: "http",
-                connectorType: deviceInfo?.prefType ?? .unknown
+                scheme: "https"
             )
             response = IRStreamConnectionResponse()
         }
@@ -47,56 +45,36 @@ class IRCustomStreamConnector: IRStreamConnector, UIAlertViewDelegate {
     }
 
     override func changeStream(_ stream: Int) {
-        deviceConnector?.getVideoStreamURL(byChannel: deviceInfo?.streamNO ?? 0)
+        deviceConnector?.getVideoStreamURL(byChannel: stream)
     }
+}
 
-    override func getErrorCode() -> Int {
-        return -1
-    }
+extension IRCustomStreamConnector: DeviceConnectorDelegate {
 
-    func didfinishLoginAction(
-        byResultType resultCode: Int,
-        deviceInfo: [String: Any]?,
-        errorDesc: String?,
-        address: String?,
-        port: MultiPort
-    ) {
-        if resultCode == 0 {
+    func didFinishLoginAction(resultType: Int,
+                              deviceInfo: [String: Any]?,
+                              errorDesc: String,
+                              address: String,
+                              port: MultiPort) {
+        if resultType == 0 {
             response?.deviceModelName = deviceInfo?["ModelName"] as? String
         }
 
-        switch resultCode {
+        switch resultType {
         case -1:
             delegate?.connectFail(byType: .connectionTimeout, errorDesc: nil)
-        case -2:
-            delegate?.connectFail(byType: .notSupported, errorDesc: errorDesc)
-        case -99:
-            delegate?.connectFail(byType: .authorizationError, errorDesc: nil)
+        // more resultCode
         default:
             break
         }
 
-        print("didfinishLoginActionByResultType:\(resultCode), \(errorDesc ?? "")")
+        print("didfinishLoginActionByResultType:\(resultType), \(errorDesc ?? "")")
     }
 
     func didGetRTSPResponse(resultCode: Int, message msg: String) {
         videoRetry += 1
-        if resultCode == -97, videoRetry > 3 {
-            if !stopForever {
-                deviceConnector?.getStreamsCodecInfo()
-                if deviceInfo?.streamNO == -1 {
-                    deviceInfo?.streamNO = streamInfoArray.count - 1
-                }
-                deviceConnector?.getVideoStreamURL(byChannel: deviceInfo?.streamNO ?? 0)
-            }
-        } else if resultCode == -2, videoRetry > 3 {
-            delegate?.connectFail(byType: .connectionTimeout, errorDesc: msg)
-        } else if !stopForever {
-            deviceConnector?.getStreamsCodecInfo()
-            if deviceInfo?.streamNO == -1 {
-                deviceInfo?.streamNO = streamInfoArray.count - 1
-            }
-            deviceConnector?.getVideoStreamURL(byChannel: deviceInfo?.streamNO ?? 0)
+        if !stopForever {
+            deviceConnector?.getVideoStreamURL(byChannel: 0)
         }
     }
 
@@ -106,15 +84,7 @@ class IRCustomStreamConnector: IRStreamConnector, UIAlertViewDelegate {
                              url: String,
                              ipRatio: Int) {
         if resultCode == 0 {
-            var channel = ch
-            while channel >= streamInfoArray.count {
-                print("@@ ch = \(channel), array = \(streamInfoArray.count)")
-                channel -= 1
-            }
-
-            response?.streamsInfo = streamInfoArray
-            deviceInfo?.streamInfo = streamInfoArray[channel]
-            deviceInfo?.streamNO = channel
+            deviceInfo?.streamInfo = streamInfoArray[ch]
             response?.rtspURL = url
             delegate?.startStreaming(with: response)
         }
@@ -131,8 +101,4 @@ class IRCustomStreamConnector: IRStreamConnector, UIAlertViewDelegate {
                                  bps: Int) {
         // Handle Two Way Audio Result
     }
-}
-
-extension IRCustomStreamConnector: DeviceConnectorDelegate {
-
 }

@@ -24,32 +24,26 @@ enum ConnectorErrorType {
 }
 
 struct MultiPort: Equatable {
-    var httpPort: Int
     var httpsPort: Int
     var videoPort: Int
     var audioPort: Int
     var normalPort: Int
-    var downloadPort: Int
 
     static func initial() -> MultiPort {
         return MultiPort(
-            httpPort: HTTP_APP_COMMAND_PORT,
             httpsPort: HTTPS_APP_COMMAND_PORT,
             videoPort: VIDEO_PORT,
             audioPort: AUDIO_PORT,
-            normalPort: NORMAL_PORT,
-            downloadPort: DOWNLOAD_PORT
+            normalPort: NORMAL_PORT
         )
     }
 
     static func zero() -> MultiPort {
         return MultiPort(
-            httpPort: 0,
             httpsPort: 0,
             videoPort: 0,
             audioPort: 0,
-            normalPort: 0,
-            downloadPort: 0
+            normalPort: 0
         )
     }
 }
@@ -99,17 +93,11 @@ class HttpAPICommander {
     weak var delegate: HttpAPICommanderDelegate?
     var commandPort: MultiPort = MultiPort.initial()
     var stopConnection: Bool = false
-    var getRTSPInfo: Bool = false
-    var getAudioInfo: Bool = false
-    var ignoreLoginCache: Bool = false
-    var stopCommandTunnel: Bool = false
 
     var address: String = ""
     var userName: String = ""
     var password: String = ""
-    var uid: String = ""
     var token: String = ""
-    var privilege: String = ""
     var scheme: String = ""
 
     var videoStreamInfo: [String: Any]?
@@ -121,9 +109,6 @@ class HttpAPICommander {
     var currentErrorType: ConnectorErrorType = .authorizationError
     var isAppAndDutUnderTheSameLAN: Bool = false
 
-    var asiHttpSender: StaticHttpRequest?
-    var deviceType: DeviceType = .ipcam
-
     // MARK: - Initializer
     init(address: String, port: MultiPort, user: String, password: String, scheme: String) {
         self.commandPort = MultiPort.initial()
@@ -131,7 +116,6 @@ class HttpAPICommander {
         self.userName = user
         self.password = password
         self.scheme = scheme
-        self.stopCommandTunnel = false
     }
 
     // MARK: - Methods
@@ -140,14 +124,12 @@ class HttpAPICommander {
         self.password = password
     }
 
-    func startLoginToDevice(getStreamInfo: Bool, ignoreLoginCache: Bool) {
-        self.getRTSPInfo = getStreamInfo
-        self.ignoreLoginCache = ignoreLoginCache
+    func startLoginToDevice() {
+        // Implementation here
     }
 
     func cancelLoginToDevice() {
         self.stopConnection = true
-        print("Cancel type=\(tag)")
     }
 
     func getVideoStreamURL(byChannel channel: Int) {
@@ -158,15 +140,7 @@ class HttpAPICommander {
         guard let videoStreamInfo = videoStreamInfo else { return nil }
 
         var codecInfo: [String] = []
-        if let streamSettings = videoStreamInfo["StreamSettings"] as? [[String: Any]] {
-            for stream in streamSettings {
-                if let enable = stream["Enable"] as? Bool, enable,
-                   let codec = stream["Codec"] as? String,
-                   let resolution = stream["Resolution"] as? String {
-                    codecInfo.append("\(codec)(\(resolution))")
-                }
-            }
-        }
+        // Implementation here
         return codecInfo
     }
 

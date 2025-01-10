@@ -12,10 +12,6 @@ struct DeviceValidationError: OptionSet {
 
     static let nameEmpty       = DeviceValidationError(rawValue: 1 << 0)  // 0x01
     static let addressEmpty    = DeviceValidationError(rawValue: 1 << 1)  // 0x02
-    static let httpPortEmpty   = DeviceValidationError(rawValue: 1 << 2)  // 0x04
-    static let uidEmpty        = DeviceValidationError(rawValue: 1 << 3)  // 0x08
-    static let userEmpty       = DeviceValidationError(rawValue: 1 << 4)  // 0x10
-    static let passwordEmpty   = DeviceValidationError(rawValue: 1 << 5)  // 0x20
 }
 
 protocol IRRTSPSettingsViewControllerDelegate: AnyObject {
@@ -26,17 +22,11 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
 
     // MARK: - Properties
     weak var delegate: IRRTSPSettingsViewControllerDelegate?
-    var m_deviceInfo: DeviceClass = DeviceClass()
-    var m_scrolltoIndex: Int = 0
-    private var m_currentText: UITextField?
-    private var m_screenSize: CGRect = .zero
-    private var mKeyboardHeight: CGFloat = 0
-    private var m_blnNeedCheckOnLine = false
+    var device: DeviceClass = DeviceClass()
 
     @IBOutlet weak var streamConnectionTypeSwitch: UISwitch!
     @IBOutlet weak var rtspUrlTextfield: UITextField!
 
-    // MARK: - Lifecycle Methods
     override func viewDidLoad() {
         super.viewDidLoad()
         let userDefaults = UserDefaults.standard
@@ -46,22 +36,17 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
         rtspUrlTextfield.text = userDefaults.string(forKey: RTSP_URL_KEY)
 
         setNavigationBarItems()
-        m_screenSize = getScreenSize()
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.navigationBar.isHidden = false
-
-        if !m_deviceInfo.deviceAddress.isEmpty {
-            print("m_deviceInfo.m_deviceAddress=\(m_deviceInfo.macAddress)")
-        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         var tmpRect = view.frame
-        tmpRect.size.height = m_screenSize.height
+        tmpRect.size.height = getScreenSize().height
         view.frame = tmpRect
         keyboardWillHide(nil)
     }
@@ -105,15 +90,15 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
     }
 
     private func setNavigationBarItems() {
-        title = NSLocalizedString("SettingsTitle", comment: "")
+        title = NSLocalizedString("Settings", comment: "")
 
         let btnLeft = UIButton(frame: CGRect(x: 0, y: 0, width: 55, height: 44))
-        btnLeft.setTitle(NSLocalizedString("ButtonTextBack", comment: ""), for: .normal)
+        btnLeft.setTitle(NSLocalizedString("Back", comment: ""), for: .normal)
         btnLeft.setTitleColor(.black, for: .normal)
         btnLeft.addTarget(self, action: #selector(backButtonPressed), for: .touchDown)
 
         let btnRight = UIButton(frame: CGRect(x: 0, y: 0, width: 55, height: 44))
-        btnRight.setTitle(NSLocalizedString("ButtonTextDone", comment: ""), for: .normal)
+        btnRight.setTitle(NSLocalizedString("Done", comment: ""), for: .normal)
         btnRight.setTitleColor(.black, for: .normal)
         btnRight.addTarget(self, action: #selector(doneButtonPressed), for: .touchDown)
 
@@ -122,21 +107,16 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
     }
 
     @objc private func keyboardWillHide(_ notification: Notification?) {
-        mKeyboardHeight = 0
-
         var viewRect = self.view.frame
         viewRect.origin.y = 0.0
         self.view.frame = viewRect
     }
 
     @objc private func backButtonPressed() {
-        m_currentText?.resignFirstResponder()
         navigationController?.popViewController(animated: true)
     }
 
     @objc private func doneButtonPressed() {
-        m_currentText?.resignFirstResponder()
-
         let userDefaults = UserDefaults.standard
         if streamConnectionTypeSwitch.isOn {
             userDefaults.set(streamConnectionTypeSwitch.isOn, forKey: ENABLE_RTSP_URL_KEY)
@@ -149,7 +129,7 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
             }
             userDefaults.set(rtspUrlTextfield.text, forKey: RTSP_URL_KEY)
             userDefaults.synchronize()
-            delegate?.updatedSettings(m_deviceInfo)
+            delegate?.updatedSettings(device)
             navigationController?.popViewController(animated: true)
             return
         }
@@ -159,7 +139,7 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
             userDefaults.set(streamConnectionTypeSwitch.isOn, forKey: ENABLE_RTSP_URL_KEY)
             userDefaults.set(rtspUrlTextfield.text, forKey: RTSP_URL_KEY)
             userDefaults.synchronize()
-            delegate?.updatedSettings(m_deviceInfo)
+            delegate?.updatedSettings(device)
             navigationController?.popViewController(animated: true)
         } else {
             var errorMessage = ""
@@ -169,15 +149,6 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
             if errors.contains(.addressEmpty) {
                 errorMessage += "\(NSLocalizedString("ModifyDeviceError_Address", comment: ""))\n"
             }
-            if errors.contains(.httpPortEmpty) {
-                errorMessage += "\(NSLocalizedString("ModifyDeviceError_HttpPort", comment: ""))\n"
-            }
-            if errors.contains(.userEmpty) {
-                errorMessage += "\(NSLocalizedString("ModifyDeviceError_UserName", comment: ""))\n"
-            }
-            if errors.contains(.passwordEmpty) {
-                errorMessage += "\(NSLocalizedString("ModifyDeviceError_Password", comment: ""))\n"
-            }
             showMessageByTitle(NSLocalizedString("ModifySaveError", comment: ""), message: errorMessage)
         }
     }
@@ -185,20 +156,11 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
     private func checkEditData() -> DeviceValidationError {
         var errors: DeviceValidationError = []
 
-        if m_deviceInfo.deviceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if device.deviceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             errors.insert(.nameEmpty)
         }
-        if m_deviceInfo.deviceAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if device.deviceAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             errors.insert(.addressEmpty)
-        }
-        if m_deviceInfo.httpPort.httpPort <= 0 {
-            errors.insert(.httpPortEmpty)
-        }
-        if m_deviceInfo.userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            errors.insert(.userEmpty)
-        }
-        if m_deviceInfo.password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            errors.insert(.passwordEmpty)
         }
 
         return errors
@@ -206,7 +168,7 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
 
     private func showMessageByTitle(_ title: String, message: String) {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: NSLocalizedString("ButtonTextOk", comment: ""), style: .default, handler: nil))
+        alert.addAction(UIAlertAction(title: NSLocalizedString("OK", comment: ""), style: .default, handler: nil))
         present(alert, animated: true, completion: nil)
     }
 }
