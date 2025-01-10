@@ -49,3 +49,6 @@ See how the `IRCustomStreamConnector` + `IRCustomStreamConnectionRequest` + `IRS
 |---|---|
 |![Demo](./ScreenShots/demo1.png)|![Demo](./ScreenShots/demo2.png)|
 |![Demo](./ScreenShots/demo3.png)|![Demo](./ScreenShots/demo4.png)|
+
+### Credits
+#### icons <a href="https://www.flaticon.com/free-icons/webcam" title="webcam icons">Webcam icons created by Andrew Dynamite - Flaticon</a>
