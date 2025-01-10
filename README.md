@@ -20,8 +20,8 @@
     - See [H264-RTSP-Server-iOS](https://github.com/irons163/H264-RTSP-Server-iOS).
 
 ## How the demo works?
-- 1. Just simply type `demo` or `demo2` or `demo3` in the `Setting` page. There are some default public rtps streammings can look at.
-- 2. Prepare 2 iPhones, connecting them in the same network.
+1. Just simply type `demo` or `demo2` or `demo3` in the `Setting` page, then press `Done` button, it will convert to a rtsp url afterward. There are some default public rtps streamings can look at.
+2. Prepare 2 iPhones, connecting them in the same network.
     - Run [H264-RTSP-Server-iOS](https://github.com/irons163/H264-RTSP-Server-iOS) in an iPhone, it would show the local IP in the top of the screen.
     - Run this project in the other iPhone, type the RTSP Url into the setting page.
     - Enjoy your personal iPhoneCam : )
@@ -39,6 +39,7 @@
 - Pressing `Done` button, then the program will try to connect and play it.
 
 ### Advanced
+- Support `fisheye` camera, you need tune it a bit to make it works.
 - There are already some codes for custome network connection like IP Cam in this project.
 See how the `IRCustomStreamConnector` + `IRCustomStreamConnectionRequest` + `IRStreamConnectionResponse` + `DeviceClass` work.
 - The codes for how you connect to your IP Cam are not implement(Login, Query, etc...). You need to customize it.
