@@ -6,10 +6,12 @@
 //
 
 import UIKit
+import Network
 
 class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
 
     @IBOutlet weak var tableView: UITableView!
+    private var browser: NWBrowser?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -41,10 +43,34 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         var player: UIViewController?
         switch indexPath.row {
         case 0:
-            player = storyboard.instantiateViewController(withIdentifier: "IRRTSPPlayerViewController")
-            if let player = player {
-                navigationController?.pushViewController(player, animated: true)
+            let parameters = NWParameters.tcp
+            browser = NWBrowser(for: .bonjour(type: "_dummy._tcp", domain: nil), using: parameters)
+            var done = false
+            browser?.stateUpdateHandler = { [weak self] state in
+                guard let self else { return }
+                switch state {
+                case .ready:
+                    player = storyboard.instantiateViewController(withIdentifier: "IRRTSPPlayerViewController")
+                    if let player = player {
+                        if done {
+                            return
+                        }
+                        done = true
+                        navigationController?.pushViewController(player, animated: true)
+                    }
+                case .failed(let error):
+                    print("Browser failed: \(error)")
+                case .setup:
+                    print("Browser setup")
+                case .cancelled:
+                    print("Browser cancelled")
+                case .waiting(let arg):
+                    print("Browser waiting \(arg))")
+                @unknown default:
+                    print("Browser unexpected state \(state)")
+                }
             }
+            browser?.start(queue: .main)
         default:
             break
         }

@@ -1,5 +1,5 @@
 {
-  "originHash" : "e8f130fe30ac6cdc940ef06ee1e8535e9f46ffee6aeead1722b9525562f6ce08",
+  "originHash" : "4b1cb7f7509cff1e0f34d3ffcfb7f9eeee63478e69757973fe81757e5eabf4cc",
   "pins" : [
     {
       "identity" : "alamofire",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "513364f870f6bfc468f9d2ff0a95caccc10044c5",
         "version" : "5.10.2"
+      }
+    },
+    {
+      "identity" : "irplayer-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/irons163/IRPlayer-swift",
+      "state" : {
+        "revision" : "dbab2b6d01a4cf831b1188685638fbfbcef8fb70",
+        "version" : "0.4.2"
       }
     }
   ],
