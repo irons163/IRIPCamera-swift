@@ -219,7 +219,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				B5CA2B612D1682F5002507B7 /* XCRemoteSwiftPackageReference "Alamofire" */,
-				B5CE507E2D19ABC100CB3683 /* XCLocalSwiftPackageReference "../IRPlayer-swift" */,
+				A6EB647C2D5E82F000481D33 /* XCRemoteSwiftPackageReference "IRPlayer-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B5CA2B1E2D1662E5002507B7 /* Products */;
@@ -305,6 +305,7 @@
 				DEVELOPMENT_TEAM = T6VV6T753H;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "IRIPCamera-swift/Info.plist";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app streams video from cameras on the local network.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -333,6 +334,7 @@
 				DEVELOPMENT_TEAM = T6VV6T753H;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "IRIPCamera-swift/Info.plist";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app streams video from cameras on the local network.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -583,14 +585,15 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		B5CE507E2D19ABC100CB3683 /* XCLocalSwiftPackageReference "../IRPlayer-swift" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = "../IRPlayer-swift";
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCRemoteSwiftPackageReference section */
+		A6EB647C2D5E82F000481D33 /* XCRemoteSwiftPackageReference "IRPlayer-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/irons163/IRPlayer-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.4.2;
+			};
+		};
 		B5CA2B612D1682F5002507B7 /* XCRemoteSwiftPackageReference "Alamofire" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
