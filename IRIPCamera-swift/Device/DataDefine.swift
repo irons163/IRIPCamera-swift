@@ -9,11 +9,6 @@
 let ENABLE_RTSP_URL_KEY = "EnableRTSPURL"
 let RTSP_URL_KEY = "RTSPURL"
 
-// Language keys
-let LANGUAGE_ENGLISH_SHORT_ID = "en"
-let LANGUAGE_CHINESE_TRADITIONAL_SHORT_ID = "zh-Hant"
-let LANGUAGE_CHINESE_SIMPLIFIED_SHORT_ID = "zh-Hans"
-
 // Maximum retry attempts
 let MAX_RETRY_TIMES = 3
 
