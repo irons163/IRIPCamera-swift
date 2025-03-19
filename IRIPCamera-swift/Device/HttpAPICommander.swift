@@ -89,6 +89,7 @@ protocol HttpAPICommanderDelegate: AnyObject {
 }
 
 class HttpAPICommander {
+
     // MARK: - Properties
     weak var delegate: HttpAPICommanderDelegate?
     var commandPort: MultiPort = MultiPort.initial()
@@ -100,7 +101,6 @@ class HttpAPICommander {
     var token: String = ""
     var scheme: String = ""
 
-    var videoStreamInfo: [String: Any]?
     var loginInfo: [String: Any]?
     var audioInfo: [String: Any]?
 
@@ -119,17 +119,13 @@ class HttpAPICommander {
     }
 
     // MARK: - Methods
-    func updateUserName(_ userName: String, password: String) {
-        self.userName = userName
-        self.password = password
-    }
-
     func startLoginToDevice() {
         // Implementation here
     }
 
     func cancelLoginToDevice() {
         self.stopConnection = true
+        // Implementation here
     }
 
     func getVideoStreamURL(byChannel channel: Int) {
@@ -137,11 +133,8 @@ class HttpAPICommander {
     }
 
     func getStreamsCodecInfo() -> [String]? {
-        guard let videoStreamInfo = videoStreamInfo else { return nil }
-
-        var codecInfo: [String] = []
         // Implementation here
-        return codecInfo
+        return nil
     }
 
     func getTwoWayAudioInfo() {
@@ -154,5 +147,10 @@ class HttpAPICommander {
 
     func checkDeviceOnline() {
         // Implementation here
+    }
+
+    func updateUserName(_ userName: String, password: String) {
+        self.userName = userName
+        self.password = password
     }
 }

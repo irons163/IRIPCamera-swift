@@ -8,11 +8,13 @@
 import UIKit
 import Network
 
-class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
+class ViewController: UIViewController {
 
+    // MARK: - Properties
     @IBOutlet weak var tableView: UITableView!
     private var browser: NWBrowser?
 
+    // MARK: - Lifecycle Methods
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -20,8 +22,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         tableView.delegate = self
         tableView.dataSource = self
     }
+}
 
-    // MARK: - UITableViewDataSource Methods
+// MARK: - UITableViewDataSource Methods
+extension ViewController: UITableViewDataSource {
+
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return 1
     }
@@ -36,8 +41,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         }
         return cell
     }
+}
 
-    // MARK: - UITableViewDelegate Methods
+// MARK: - UITableViewDelegate Methods
+extension ViewController: UITableViewDelegate {
+
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let storyboard = UIStoryboard(name: "Main", bundle: nil)
         var player: UIViewController?

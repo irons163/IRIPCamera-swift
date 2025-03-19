@@ -61,8 +61,6 @@ class AddressConnector: HttpAPICommander, HttpRequestDelegate {
             return
         }
 
-        let port = commandPort.httpsPort
-
         HttpRequest.shared.doJsonRequest(
             token: token,
             url: "",

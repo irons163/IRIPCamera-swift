@@ -23,8 +23,9 @@ class FrameContext {
 
 class MyIRFFVideoInput: IRFFVideoInput {
 
-    let startCode3 = Data([0x00, 0x00, 0x01]) // 3 字节起始码
-    let startCode4 = Data([0x00, 0x00, 0x00, 0x01]) // 4 字节起始码
+    // MARK: - Properties
+    let startCode3 = Data([0x00, 0x00, 0x01])
+    let startCode4 = Data([0x00, 0x00, 0x00, 0x01])
 
     private var session: VTDecompressionSession?
     private var videoFormatDescr: CMFormatDescription?

@@ -12,7 +12,7 @@ protocol DeviceClassDelegate: AnyObject {
     func didDeviceStatusFinish(_ device: DeviceClass)
 }
 
-class DeviceClass: NSObject, NSCopying, HttpRequestDelegate {
+class DeviceClass: NSObject, NSCopying {
 
     // MARK: - Properties
     var connector: DeviceConnector?
@@ -59,8 +59,11 @@ class DeviceClass: NSObject, NSCopying, HttpRequestDelegate {
         copy.streamInfo = streamInfo
         return copy
     }
+}
 
-    // MARK: - Methods
+// MARK: - Methods
+extension DeviceClass {
+
     func stopConnectionAction() {
         connector?.stopConnectionAction()
         connector?.delegate = nil
@@ -70,25 +73,16 @@ class DeviceClass: NSObject, NSCopying, HttpRequestDelegate {
     func getWideDegreeValue() -> Float {
         return 0
     }
+}
 
-    // MARK: - HttpRequestDelegate
+// MARK: - HttpRequestDelegate
+extension DeviceClass: HttpRequestDelegate {
+
     func didFinishStaticRequestJSON(response: Any, callbackID: DeviceConnectorCommandStatus) {
         delegate?.didDeviceStatusFinish(self)
     }
 
     func failToStaticRequest(errorCode code: Int, description: String, callbackID: DeviceConnectorCommandStatus) {
-        delegate?.didDeviceStatusFinish(self)
-    }
-
-    // MARK: - deviceConnectorDelegate
-    func didFinishLoginAction(
-        byResultType resultCode: Int,
-        deviceInfo: [String: Any],
-        errorDesc: String,
-        address: String,
-        port: MultiPort
-    ) {
-        print("\(address):\(port.httpsPort), result=\(resultCode), errorDesc=\(errorDesc)")
         delegate?.didDeviceStatusFinish(self)
     }
 }

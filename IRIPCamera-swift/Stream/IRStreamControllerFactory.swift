@@ -8,6 +8,7 @@
 import Foundation
 
 class IRStreamControllerFactory {
+
     static func createStreamController(by request: IRStreamConnectionRequest) -> IRStreamController {
         var streamController: IRStreamController?
 

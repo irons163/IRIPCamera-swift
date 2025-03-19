@@ -74,7 +74,7 @@ class HttpRequest {
         scheme: String,
         target: HttpRequestDelegate
     ) {
-        var request = URLRequest(url: changeURL(url: url, withScheme: scheme))
+        let request = URLRequest(url: changeURL(url: url, withScheme: scheme))
 
         AF.request(request)
             .validate()

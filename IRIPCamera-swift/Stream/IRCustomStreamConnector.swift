@@ -68,7 +68,7 @@ extension IRCustomStreamConnector: DeviceConnectorDelegate {
             break
         }
 
-        print("didfinishLoginActionByResultType:\(resultType), \(errorDesc ?? "")")
+        print("didfinishLoginActionByResultType:\(resultType), \(errorDesc)")
     }
 
     func didGetRTSPResponse(resultCode: Int, message msg: String) {

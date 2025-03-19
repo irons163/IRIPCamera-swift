@@ -32,6 +32,7 @@ extension IRStreamControllerDelegate {
 
 class IRStreamController: NSObject {
 
+    // MARK: - Properties
     var deviceInfo: DeviceClass?
     private var httpRequest: HttpRequest?
     private var channel: Int = 0
