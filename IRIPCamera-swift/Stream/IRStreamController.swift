@@ -47,6 +47,7 @@ class IRStreamController: NSObject {
 
     private var parameter: IRMediaParameter?
     private var streamConnector: IRStreamConnector?
+    private lazy var videoInput = IRStreamVideoDecoder(outputType: .decoder)
 
     weak var eventDelegate: IRStreamControllerDelegate?
     weak var videoView: IRPlayerImp? {
@@ -88,6 +89,9 @@ class IRStreamController: NSObject {
         stopStreamingFlag = true
         stopForeverFlag = stopForever
         videoView?.pause()
+        if stopForever {
+            videoInput.releaseDecoder()
+        }
         streamConnector?.stopStreaming(stopForever)
         connected(false)
     }
@@ -209,8 +213,7 @@ extension IRStreamController: IRStreamConnectorDelegate {
             return
         }
 
-        let input = MyIRFFVideoInput(outputType: .decoder)
-        self.videoView?.replaceVideoWithURL(contentURL: NSURL(string: currentURL), videoType: .normal, videoInput: input)
+        self.videoView?.replaceVideoWithURL(contentURL: NSURL(string: currentURL), videoType: .normal, videoInput: videoInput)
     }
 
     private func connected(_ connected: Bool) {

@@ -206,17 +206,11 @@ class IRRTSPPlayerViewController: UIViewController, IRRTSPSettingsViewController
         }
     }
 
-    @objc func progressAction(_ notification: Notification) {}
+    @objc func progressAction(_ notification: Notification) { }
 
-    @objc func playableAction(_ notification: Notification) {
-//        guard let playable = IRPlayable.playable(fromUserInfo: notification.userInfo) else { return }
-//        print("Playable time: \(playable.current)")
-    }
+    @objc func playableAction(_ notification: Notification) { }
 
-    @objc func errorAction(_ notification: Notification) {
-//        guard let error = IRError.error(fromUserInfo: notification.userInfo) else { return }
-//        print("Player did error: \(error.error ?? "Unknown error")")
-    }
+    @objc func errorAction(_ notification: Notification) { }
 
     // MARK: - Utility
     func timeString(fromSeconds seconds: CGFloat) -> String {
