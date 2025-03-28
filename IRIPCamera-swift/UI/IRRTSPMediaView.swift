@@ -81,7 +81,6 @@ class IRRTSPMediaView: UIView, IRStreamControllerDelegate {
     }
 
     // MARK: - Player Setup
-
     private func setupConstraints(for view: UIView, in container: UIView) {
         view.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([

@@ -35,16 +35,10 @@ extension DeviceConnectorDelegate {
     func didReportFileDownloadPort(resultCode: Int, message: String, port: Int) { }
 }
 
-enum ConnectorState {
-    case checkOnlineConnector
-    case loginConnector
-}
-
 class DeviceConnector: NSObject {
     // MARK: - Properties
     weak var delegate: DeviceConnectorDelegate?
     var addressConnector: AddressConnector?
-    var currentState: ConnectorState = .checkOnlineConnector
     var connectorCounter = 0
     var deviceInfo: Any?
     var originalScheme: String = "http"
@@ -61,12 +55,10 @@ class DeviceConnector: NSObject {
         password: String,
         delegate: DeviceConnectorDelegate?,
         deviceInfo: Any?,
-        state: ConnectorState,
         scheme: String
     ) {
         super.init()
         self.delegate = delegate
-        self.currentState = state
         self.originalScheme = scheme == "http" ? scheme : "http"
         self.deviceInfo = deviceInfo
 

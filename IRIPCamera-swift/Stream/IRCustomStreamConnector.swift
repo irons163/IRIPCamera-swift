@@ -26,7 +26,6 @@ class IRCustomStreamConnector: IRStreamConnector, UIAlertViewDelegate {
                 password: deviceInfo?.password ?? "",
                 delegate: self,
                 deviceInfo: deviceInfo,
-                state: .loginConnector,
                 scheme: "https"
             )
             response = IRStreamConnectionResponse()

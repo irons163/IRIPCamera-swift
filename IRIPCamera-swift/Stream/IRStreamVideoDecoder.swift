@@ -107,10 +107,10 @@ extension IRStreamVideoDecoder {
         }
 
         // Decode NAL unit
-        var startCodeIndex = findFirstNALUType1or5StartCodeIndex(in: packet.data, length: Int(packet.size)) ?? 0
+        let startCodeIndex = findFirstNALUType1or5StartCodeIndex(in: packet.data, length: Int(packet.size)) ?? 0
 
         var naluType: UInt8 = 0
-        var startCodeEndedIndex = (startCodeIndex...startCodeIndex+4).first(where: { packet.data[$0] == 0x01 }) ?? 0
+        let startCodeEndedIndex = (startCodeIndex...startCodeIndex+4).first(where: { packet.data[$0] == 0x01 }) ?? 0
         naluType = (packet.data[startCodeEndedIndex + 1] & 0x1F)
 
         // Find the offset, or where the SPS and PPS NALUs end and the IDR frame NALU begins

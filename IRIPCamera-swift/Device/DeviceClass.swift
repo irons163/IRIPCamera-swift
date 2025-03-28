@@ -16,7 +16,6 @@ class DeviceClass: NSObject, NSCopying {
 
     // MARK: - Properties
     var connector: DeviceConnector?
-    var currentState: ConnectorState = .loginConnector
     var httpPort: MultiPort = MultiPort.initial()
 
     var deviceName: String = ""
