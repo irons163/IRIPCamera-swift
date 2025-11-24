@@ -30,7 +30,6 @@ final class IRStreamVideoDecoder: IRFFVideoInput {
     private var videoFormatDescr: CMFormatDescription?
     private var status: OSStatus = noErr
     private var decodeStatus: OSStatus = noErr
-    private var decodeOutput: CVImageBuffer?
 
     // Parameter sets
     private var spsList: [Data] = []
@@ -74,9 +73,8 @@ final class IRStreamVideoDecoder: IRFFVideoInput {
         }
 
         videoInput.decodeStatus = status
-        videoInput.decodeOutput = imageBuffer
 
-        if let frame = videoInput.videoFrameFromVideoToolBox(frameContext.videoDecoder, packet: frameContext.packet) {
+        if let frame = videoInput.videoFrameFromImageBuffer(frameContext.videoDecoder, packet: frameContext.packet, imageBuffer: imageBuffer!) {
             videoInput.videoOutput?.send?(videoFrame: frame)
         }
     }
@@ -117,17 +115,14 @@ extension IRStreamVideoDecoder {
         }
 
         // 2) Prepare sample buffer in length-prefixed format (VT expects AVCC/HVCC)
-        let (avccBuffer, sampleSize) = buildAVCCSample(from: packet)
-        guard let avccBuffer, sampleSize > 0 else { return }
+        let (avccData, sampleSize) = buildAVCCSample(from: packet)
+        guard let avccData, sampleSize > 0 else { return }
 
-        // 3) Create CMBlockBuffer (owning copy)
+        // 3) Create CMBlockBuffer owned by CoreMedia, then copy Data into it (avoid external pointer management and leaks)
         var blockBuffer: CMBlockBuffer?
-        let copiedPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: sampleSize)
-        copiedPtr.initialize(from: avccBuffer, count: sampleSize)
-
         status = CMBlockBufferCreateWithMemoryBlock(
             allocator: kCFAllocatorDefault,
-            memoryBlock: copiedPtr,
+            memoryBlock: nil, // Let CoreMedia allocate memory
             blockLength: sampleSize,
             blockAllocator: kCFAllocatorDefault,
             customBlockSource: nil,
@@ -136,14 +131,48 @@ extension IRStreamVideoDecoder {
             flags: 0,
             blockBufferOut: &blockBuffer
         )
-        if status != noErr {
-            copiedPtr.deallocate()
+        if status != noErr || blockBuffer == nil {
+            print("CMBlockBufferCreateWithMemoryBlock error: \(status)")
             return
         }
 
-        // 4) Create CMSampleBuffer
+        // Copy AVCC/HVCC bytes into CMBlockBuffer
+        avccData.withUnsafeBytes { rawBuf in
+            if let base = rawBuf.bindMemory(to: UInt8.self).baseAddress {
+                let rc = CMBlockBufferReplaceDataBytes(
+                    with: base,
+                    blockBuffer: blockBuffer!,
+                    offsetIntoDestination: 0,
+                    dataLength: sampleSize
+                )
+                if rc != noErr {
+                    print("CMBlockBufferReplaceDataBytes error: \(rc)")
+                }
+            }
+        }
+
+        // 4) Create CMSampleBuffer with timing info
         var sbRef: CMSampleBuffer?
         var sampleSizeArray = [sampleSize]
+
+        // Build timing
+        let tb = frameContext.videoDecoder.timebase
+        let ptsSeconds: Double
+        if packet.pts != IR_AV_NOPTS_VALUE {
+            ptsSeconds = Double(packet.pts) * tb
+        } else if packet.dts != IR_AV_NOPTS_VALUE {
+            ptsSeconds = Double(packet.dts) * tb
+        } else {
+            ptsSeconds = 0
+        }
+        let durSeconds: Double = packet.duration > 0 ? Double(packet.duration) * tb : (frameContext.videoDecoder.fps > 0 ? 1.0 / frameContext.videoDecoder.fps : 0)
+
+        var timing = CMSampleTimingInfo(
+            duration: durSeconds > 0 ? CMTimeMakeWithSeconds(durSeconds, preferredTimescale: 600) : CMTime.invalid,
+            presentationTimeStamp: CMTimeMakeWithSeconds(ptsSeconds, preferredTimescale: 600),
+            decodeTimeStamp: CMTime.invalid
+        )
+
         status = CMSampleBufferCreate(
             allocator: kCFAllocatorDefault,
             dataBuffer: blockBuffer,
@@ -152,13 +181,14 @@ extension IRStreamVideoDecoder {
             refcon: nil,
             formatDescription: videoFormatDescr!,
             sampleCount: 1,
-            sampleTimingEntryCount: 0,
-            sampleTimingArray: nil,
+            sampleTimingEntryCount: 1,
+            sampleTimingArray: &timing,
             sampleSizeEntryCount: 1,
             sampleSizeArray: &sampleSizeArray,
             sampleBufferOut: &sbRef
         )
         if status != noErr || sbRef == nil {
+            print("CMSampleBufferCreate error: \(status)")
             return
         }
 
@@ -183,18 +213,10 @@ extension IRStreamVideoDecoder {
             decompressionOutputRefCon: Unmanaged.passUnretained(self).toOpaque()
         )
 
-        // Important: allow GL/Metal compatibility and IOSurface, and multiple pixel formats
-        let pixelFormats: [FourCharCode] = [
-            kCVPixelFormatType_420YpCbCr8BiPlanarFullRange,
-            kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
-            kCVPixelFormatType_420YpCbCr10BiPlanarFullRange,
-            kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange
-        ]
         let destinationImageBufferAttributes: [String: Any] = [
-            kCVPixelBufferOpenGLESCompatibilityKey as String: true,
+            kCVPixelBufferOpenGLESCompatibilityKey as String: false,
             kCVPixelBufferMetalCompatibilityKey as String: true,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:], // required for texture binding
-            kCVPixelBufferPixelFormatTypeKey as String: pixelFormats
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
         ]
 
         status = VTDecompressionSessionCreate(
@@ -211,11 +233,7 @@ extension IRStreamVideoDecoder {
         }
     }
 
-    private func videoFrameFromVideoToolBox(_ videoDecoder: IRFFVideoDecoderInfo, packet: AVPacket) -> IRFFVideoFrame? {
-        guard let imageBuffer = decodeOutput else {
-            return nil
-        }
-
+    private func videoFrameFromImageBuffer(_ videoDecoder: IRFFVideoDecoderInfo, packet: AVPacket, imageBuffer: CVImageBuffer) -> IRFFVideoFrame? {
         let videoFrame = IRFFCVYUVVideoFrame(pixelBuffer: imageBuffer)
         if packet.pts != IR_AV_NOPTS_VALUE {
             videoFrame.position = TimeInterval(packet.pts) * videoDecoder.timebase
@@ -297,8 +315,8 @@ extension IRStreamVideoDecoder {
                         let ppsBase = ppsRawBuf.bindMemory(to: UInt8.self).baseAddress
                     else { return }
 
-                    var parameterPointers: [UnsafePointer<UInt8>] = [spsBase, ppsBase]
-                    var parameterSizes: [Int] = [firstSPS.count, firstPPS.count]
+                    let parameterPointers: [UnsafePointer<UInt8>] = [spsBase, ppsBase]
+                    let parameterSizes: [Int] = [firstSPS.count, firstPPS.count]
 
                     parameterPointers.withUnsafeBufferPointer { ptrs in
                         parameterSizes.withUnsafeBufferPointer { sizes in
@@ -354,8 +372,8 @@ extension IRStreamVideoDecoder {
                             let ppsBase = ppsRawBuf.bindMemory(to: UInt8.self).baseAddress
                         else { return }
 
-                        var parameterPointers: [UnsafePointer<UInt8>] = [vpsBase, spsBase, ppsBase]
-                        var parameterSizes: [Int] = [firstVPS.count, firstSPS.count, firstPPS.count]
+                        let parameterPointers: [UnsafePointer<UInt8>] = [vpsBase, spsBase, ppsBase]
+                        let parameterSizes: [Int] = [firstVPS.count, firstSPS.count, firstPPS.count]
 
                         parameterPointers.withUnsafeBufferPointer { ptrs in
                             parameterSizes.withUnsafeBufferPointer { sizes in
@@ -510,16 +528,19 @@ extension IRStreamVideoDecoder {
 // MARK: - Packet to AVCC/HVCC conversion
 extension IRStreamVideoDecoder {
 
-    private func buildAVCCSample(from packet: AVPacket) -> (UnsafePointer<UInt8>?, Int) {
+    // Return Data to avoid externally allocated pointer leaks
+    private func buildAVCCSample(from packet: AVPacket) -> (Data?, Int) {
         guard let dataPtr = packet.data, packet.size > 0 else { return (nil, 0) }
         let length = Int(packet.size)
 
         let looksLikeAnnexB = looksLikeAnnexBBuffer(dataPtr, length: length)
         if looksLikeAnnexB {
             let converted = convertAnnexBToAVCC(dataPtr, length: length, nalLengthSize: nalLengthSize)
-            return converted
+            return (converted, converted.count)
         } else {
-            return (UnsafePointer<UInt8>(dataPtr), length)
+            // Wrap as Data directly; it will be copied into CMBlockBuffer later
+            let data = Data(bytes: dataPtr, count: length)
+            return (data, length)
         }
     }
 
@@ -535,7 +556,8 @@ extension IRStreamVideoDecoder {
         return false
     }
 
-    private func convertAnnexBToAVCC(_ ptr: UnsafeMutablePointer<UInt8>, length: Int, nalLengthSize: Int) -> (UnsafePointer<UInt8>?, Int) {
+    // Convert to Data (length-prefixed)
+    private func convertAnnexBToAVCC(_ ptr: UnsafeMutablePointer<UInt8>, length: Int, nalLengthSize: Int) -> Data {
         var nalRanges: [(start: Int, end: Int)] = []
         var i = 0
         func matchStartCode(_ p: UnsafeMutablePointer<UInt8>, _ len: Int) -> Int? {
@@ -566,24 +588,22 @@ extension IRStreamVideoDecoder {
             i = naluEnd
         }
 
-        var total = 0
-        for r in nalRanges {
-            total += nalLengthSize + (r.end - r.start)
-        }
-        if total == 0 { return (nil, 0) }
+        if nalRanges.isEmpty { return Data() }
 
-        let outPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: total)
-        var offset = 0
+        var out = Data()
+        out.reserveCapacity(nalRanges.reduce(0) { $0 + nalLengthSize + ($1.end - $1.start) })
+
         for r in nalRanges {
             let nalSize = r.end - r.start
+            // Write length (big-endian)
             for b in stride(from: (nalLengthSize - 1), through: 0, by: -1) {
-                outPtr[offset + (nalLengthSize - 1 - b)] = UInt8((nalSize >> (b * 8)) & 0xFF)
+                let v = UInt8((nalSize >> (b * 8)) & 0xFF)
+                out.append(v)
             }
-            offset += nalLengthSize
-            memcpy(outPtr.advanced(by: offset), ptr.advanced(by: r.start), nalSize)
-            offset += nalSize
+            // Write NALU payload
+            out.append(UnsafeBufferPointer(start: ptr.advanced(by: r.start), count: nalSize))
         }
-        return (UnsafePointer<UInt8>(outPtr), total)
+        return out
     }
 
     private func nextAnnexBNAL(in ptr: UnsafeMutablePointer<UInt8>, size: Int, start: Int, isHEVC: Bool) -> ((Range<Int>, Int))? {
@@ -627,3 +647,4 @@ extension IRStreamVideoDecoder {
         return (naluStart..<naluEnd, naluType)
     }
 }
+
