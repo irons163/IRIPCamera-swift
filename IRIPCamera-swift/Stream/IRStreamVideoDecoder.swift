@@ -183,9 +183,18 @@ extension IRStreamVideoDecoder {
             decompressionOutputRefCon: Unmanaged.passUnretained(self).toOpaque()
         )
 
+        // Important: allow GL/Metal compatibility and IOSurface, and multiple pixel formats
+        let pixelFormats: [FourCharCode] = [
+            kCVPixelFormatType_420YpCbCr8BiPlanarFullRange,
+            kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+            kCVPixelFormatType_420YpCbCr10BiPlanarFullRange,
+            kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange
+        ]
         let destinationImageBufferAttributes: [String: Any] = [
-            kCVPixelBufferOpenGLESCompatibilityKey as String: false,
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
+            kCVPixelBufferOpenGLESCompatibilityKey as String: true,
+            kCVPixelBufferMetalCompatibilityKey as String: true,
+            kCVPixelBufferIOSurfacePropertiesKey as String: [:], // required for texture binding
+            kCVPixelBufferPixelFormatTypeKey as String: pixelFormats
         ]
 
         status = VTDecompressionSessionCreate(
@@ -253,7 +262,6 @@ extension IRStreamVideoDecoder {
         let firstByte = extradata[0]
 
         if codecKind == .h264 {
-            // H.264: avcC starts with 0x01
             if firstByte == 0x01 {
                 inputFormat = .avccOrHvcc
                 _ = parseAVCC(extradata: extradata, size: size)
@@ -271,7 +279,6 @@ extension IRStreamVideoDecoder {
                 }
             }
 
-            // Use only first SPS/PPS to avoid -12712
             guard let firstSPS = spsList.first, let firstPPS = ppsList.first else {
                 print("No SPS/PPS parsed from extradata.")
                 return
@@ -310,7 +317,6 @@ extension IRStreamVideoDecoder {
             }
 
         } else {
-            // HEVC: hvcC (HEVCDecoderConfigurationRecord) also starts with 0x01
             if firstByte == 0x01 {
                 inputFormat = .avccOrHvcc
                 _ = parseHVCC(extradata: extradata, size: size)
@@ -378,7 +384,6 @@ extension IRStreamVideoDecoder {
 
     @discardableResult
     private func parseAVCC(extradata: UnsafeMutablePointer<UInt8>, size: Int) -> Bool {
-        // AVCDecoderConfigurationRecord
         guard size >= 7, extradata[0] == 1 else { return false }
         let lengthSizeMinusOne = Int(extradata[4] & 0x03)
         nalLengthSize = lengthSizeMinusOne + 1
@@ -417,15 +422,10 @@ extension IRStreamVideoDecoder {
         return !spsList.isEmpty && !ppsList.isEmpty
     }
 
-    // Parse HEVCDecoderConfigurationRecord (hvcC)
     @discardableResult
     private func parseHVCC(extradata: UnsafeMutablePointer<UInt8>, size: Int) -> Bool {
-        // Minimal parsing; reference ISO/IEC 14496-15
-        // hvcC starts with configurationVersion == 1
         guard size >= 23, extradata[0] == 1 else { return false }
 
-        // general_profile_space.. etc are here; we mainly need lengthSizeMinusOne and arrays
-        // lengthSizeMinusOne is in byte 21 lower 2 bits
         let lengthSizeMinusOne = Int(extradata[21] & 0x03)
         nalLengthSize = lengthSizeMinusOne + 1
 
@@ -443,7 +443,7 @@ extension IRStreamVideoDecoder {
             if offset + 3 > size { return false }
             let arrayCompletenessAndType = extradata[offset]
             offset += 1
-            let nalUnitType = Int(arrayCompletenessAndType & 0x3F) // 6-bit type
+            let nalUnitType = Int(arrayCompletenessAndType & 0x3F)
             let numNalus = Int(extradata[offset]) << 8 | Int(extradata[offset + 1])
             offset += 2
 
@@ -454,14 +454,10 @@ extension IRStreamVideoDecoder {
                 if offset + nalUnitLength > size { return false }
                 let data = Data(bytes: extradata.advanced(by: offset), count: nalUnitLength)
                 switch nalUnitType {
-                case 32: // VPS
-                    vpsList.append(data)
-                case 33: // SPS
-                    spsList.append(data)
-                case 34: // PPS
-                    ppsList.append(data)
-                default:
-                    break
+                case 32: vpsList.append(data)
+                case 33: spsList.append(data)
+                case 34: ppsList.append(data)
+                default: break
                 }
                 offset += nalUnitLength
             }
@@ -478,7 +474,6 @@ extension IRStreamVideoDecoder {
         var index = 0
         while let (range, naluType) = nextAnnexBNAL(in: extradata, size: size, start: index, isHEVC: isHEVC) {
             if isHEVC {
-                // HEVC types: VPS(32) SPS(33) PPS(34)
                 switch naluType {
                 case 32:
                     let vps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
@@ -493,7 +488,6 @@ extension IRStreamVideoDecoder {
                     break
                 }
             } else {
-                // H.264 types: SPS(7) PPS(8)
                 if naluType == 7 {
                     let sps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
                     spsList.append(sps)
@@ -525,7 +519,6 @@ extension IRStreamVideoDecoder {
             let converted = convertAnnexBToAVCC(dataPtr, length: length, nalLengthSize: nalLengthSize)
             return converted
         } else {
-            // Already length-prefixed (AVCC/HVCC)
             return (UnsafePointer<UInt8>(dataPtr), length)
         }
     }
@@ -551,7 +544,6 @@ extension IRStreamVideoDecoder {
             return nil
         }
 
-        // Find all NAL ranges (without start code)
         while i < length {
             guard let scLen = matchStartCode(ptr.advanced(by: i), length - i) else {
                 i += 1
@@ -584,7 +576,6 @@ extension IRStreamVideoDecoder {
         var offset = 0
         for r in nalRanges {
             let nalSize = r.end - r.start
-            // Big-endian length
             for b in stride(from: (nalLengthSize - 1), through: 0, by: -1) {
                 outPtr[offset + (nalLengthSize - 1 - b)] = UInt8((nalSize >> (b * 8)) & 0xFF)
             }
@@ -595,7 +586,6 @@ extension IRStreamVideoDecoder {
         return (UnsafePointer<UInt8>(outPtr), total)
     }
 
-    // Scan next Annex B NAL, return range without start code and NAL type
     private func nextAnnexBNAL(in ptr: UnsafeMutablePointer<UInt8>, size: Int, start: Int, isHEVC: Bool) -> ((Range<Int>, Int))? {
         var i = start
         func matchStartCode(_ p: UnsafeMutablePointer<UInt8>, _ len: Int) -> Int? {
@@ -604,7 +594,6 @@ extension IRStreamVideoDecoder {
             return nil
         }
 
-        // Find first start code
         var scLen1: Int?
         while i < size {
             if let sc = matchStartCode(ptr.advanced(by: i), size - i) {
@@ -616,7 +605,6 @@ extension IRStreamVideoDecoder {
         guard let sc1 = scLen1 else { return nil }
         let naluStart = i + sc1
 
-        // Find next start code
         var j = naluStart
         var nextStartIdx: Int?
         while j < size {
@@ -632,9 +620,9 @@ extension IRStreamVideoDecoder {
         let firstByte = ptr[naluStart]
         let naluType: Int
         if isHEVC {
-            naluType = Int((firstByte >> 1) & 0x3F) // HEVC: 6-bit type
+            naluType = Int((firstByte >> 1) & 0x3F)
         } else {
-            naluType = Int(firstByte & 0x1F) // H.264: 5-bit type
+            naluType = Int(firstByte & 0x1F)
         }
         return (naluStart..<naluEnd, naluType)
     }
