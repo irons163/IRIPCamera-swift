@@ -20,19 +20,37 @@ class FrameContext {
     }
 }
 
-class IRStreamVideoDecoder: IRFFVideoInput {
+final class IRStreamVideoDecoder: IRFFVideoInput {
 
     // MARK: - Properties
-    let startCode3 = Data([0x00, 0x00, 0x01])
-    let startCode4 = Data([0x00, 0x00, 0x00, 0x01])
+    private let startCode3: [UInt8] = [0x00, 0x00, 0x01]
+    private let startCode4: [UInt8] = [0x00, 0x00, 0x00, 0x01]
 
     private var session: VTDecompressionSession?
     private var videoFormatDescr: CMFormatDescription?
     private var status: OSStatus = noErr
     private var decodeStatus: OSStatus = noErr
     private var decodeOutput: CVImageBuffer?
-    private var spsData: Data?
-    private var ppsData: Data?
+
+    // Parameter sets
+    private var spsList: [Data] = []
+    private var ppsList: [Data] = []
+    private var vpsList: [Data] = [] // HEVC
+
+    // Input format tracking
+    private enum NALInputFormat {
+        case annexB
+        case avccOrHvcc
+    }
+    private var inputFormat: NALInputFormat?
+    private var nalLengthSize: Int = 4 // default to 4 if unknown
+
+    // Codec tracking
+    private enum CodecKind {
+        case h264
+        case hevc
+    }
+    private var codecKind: CodecKind = .h264
 
     private let didDecompress: VTDecompressionOutputCallback = { (
             decompressionOutputRefCon: UnsafeMutableRawPointer?,
@@ -58,13 +76,13 @@ class IRStreamVideoDecoder: IRFFVideoInput {
         videoInput.decodeStatus = status
         videoInput.decodeOutput = imageBuffer
 
-        videoInput.videoOutput?.send?(videoFrame: videoInput.videoFrameFromVideoToolBox(frameContext.videoDecoder, packet: frameContext.packet)!)
+        if let frame = videoInput.videoFrameFromVideoToolBox(frameContext.videoDecoder, packet: frameContext.packet) {
+            videoInput.videoOutput?.send?(videoFrame: frame)
+        }
     }
 
     override func videoDecoder(_ videoDecoder: IRFFVideoDecoderInfo, decodeFrame packet: AVPacket) -> IRFFVideoFrame? {
-
         videoToolboxDecode(with: FrameContext(videoDecoder: videoDecoder, packet: packet))
-
         return nil
     }
 
@@ -74,116 +92,113 @@ class IRStreamVideoDecoder: IRFFVideoInput {
             self.session = nil
         }
         videoFormatDescr = nil
+        spsList.removeAll()
+        ppsList.removeAll()
+        vpsList.removeAll()
+        inputFormat = nil
+        nalLengthSize = 4
     }
 }
 
+// MARK: - Decode flow
 extension IRStreamVideoDecoder {
 
     private func videoToolboxDecode(with frameContext: FrameContext) {
         let pCodecCtx: UnsafeMutablePointer<AVCodecContext> = frameContext.videoDecoder.codecContext
         let packet = frameContext.packet
-        setupSPSAndPPS(with: pCodecCtx)
 
-        // Create VTDecompressionSession
-        if session == nil {
-            var callback = VTDecompressionOutputCallbackRecord(
-                decompressionOutputCallback: didDecompress,
-                decompressionOutputRefCon: Unmanaged.passUnretained(self).toOpaque()
-            )
-
-            let destinationImageBufferAttributes: [String: Any] = [
-                kCVPixelBufferOpenGLESCompatibilityKey as String: false,
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
-            ]
-
-            status = VTDecompressionSessionCreate(
-                allocator: kCFAllocatorDefault,
-                formatDescription: videoFormatDescr!,
-                decoderSpecification: nil,
-                imageBufferAttributes: destinationImageBufferAttributes as CFDictionary,
-                outputCallback: &callback,
-                decompressionSessionOut: &session
-            )
+        // 1) Ensure we have a CMFormatDescription and a VT session
+        if videoFormatDescr == nil || session == nil {
+            setupFormatDescriptionIfNeeded(from: pCodecCtx)
+            setupVTSessionIfNeeded()
+            if session == nil || videoFormatDescr == nil {
+                return
+            }
         }
 
-        // Decode NAL unit
-        let startCodeIndex = findFirstNALUType1or5StartCodeIndex(in: packet.data, length: Int(packet.size)) ?? 0
+        // 2) Prepare sample buffer in length-prefixed format (VT expects AVCC/HVCC)
+        let (avccBuffer, sampleSize) = buildAVCCSample(from: packet)
+        guard let avccBuffer, sampleSize > 0 else { return }
 
-        var naluType: UInt8 = 0
-        let startCodeEndedIndex = (startCodeIndex...startCodeIndex+4).first(where: { packet.data[$0] == 0x01 }) ?? 0
-        naluType = (packet.data[startCodeEndedIndex + 1] & 0x1F)
+        // 3) Create CMBlockBuffer (owning copy)
+        var blockBuffer: CMBlockBuffer?
+        let copiedPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: sampleSize)
+        copiedPtr.initialize(from: avccBuffer, count: sampleSize)
 
-        // Find the offset, or where the SPS and PPS NALUs end and the IDR frame NALU begins
-        var newData: UnsafeMutablePointer<UInt8>!
-        var blockLength: Int = 0
+        status = CMBlockBufferCreateWithMemoryBlock(
+            allocator: kCFAllocatorDefault,
+            memoryBlock: copiedPtr,
+            blockLength: sampleSize,
+            blockAllocator: kCFAllocatorDefault,
+            customBlockSource: nil,
+            offsetToData: 0,
+            dataLength: sampleSize,
+            flags: 0,
+            blockBufferOut: &blockBuffer
+        )
+        if status != noErr {
+            copiedPtr.deallocate()
+            return
+        }
 
-        let offset = startCodeIndex
-        blockLength = Int(packet.size) - offset
-        newData = packet.data.advanced(by: offset)
+        // 4) Create CMSampleBuffer
+        var sbRef: CMSampleBuffer?
+        var sampleSizeArray = [sampleSize]
+        status = CMSampleBufferCreate(
+            allocator: kCFAllocatorDefault,
+            dataBuffer: blockBuffer,
+            dataReady: true,
+            makeDataReadyCallback: nil,
+            refcon: nil,
+            formatDescription: videoFormatDescr!,
+            sampleCount: 1,
+            sampleTimingEntryCount: 0,
+            sampleTimingArray: nil,
+            sampleSizeEntryCount: 1,
+            sampleSizeArray: &sampleSizeArray,
+            sampleBufferOut: &sbRef
+        )
+        if status != noErr || sbRef == nil {
+            return
+        }
 
-        if naluType == 1 || naluType == 5 {
-            // Create a CMBlockBuffer
-            var videoBlock: CMBlockBuffer?
-            status = CMBlockBufferCreateWithMemoryBlock(
-                allocator: nil,
-                memoryBlock: newData,
-                blockLength: blockLength,
-                blockAllocator: kCFAllocatorNull,
-                customBlockSource: nil,
-                offsetToData: 0,
-                dataLength: blockLength,
-                flags: 0,
-                blockBufferOut: &videoBlock
-            )
+        // 5) Decode
+        var flagOut = VTDecodeInfoFlags()
+        status = VTDecompressionSessionDecodeFrame(
+            session!,
+            sampleBuffer: sbRef!,
+            flags: [._EnableAsynchronousDecompression],
+            frameRefcon: Unmanaged.passRetained(frameContext).toOpaque(),
+            infoFlagsOut: &flagOut
+        )
+        if status != noErr {
+            print("VTDecompressionSessionDecodeFrame error: \(status)")
+        }
+    }
 
-            // Replace the start code header(4-byte length) on NALU with its size.
-            // AVCC format requires that you do this.
-            let sizeWithoutStartCodeHeader = blockLength - (startCodeEndedIndex - startCodeIndex + 1)
+    private func setupVTSessionIfNeeded() {
+        guard session == nil, let videoFormatDescr else { return }
+        var callback = VTDecompressionOutputCallbackRecord(
+            decompressionOutputCallback: didDecompress,
+            decompressionOutputRefCon: Unmanaged.passUnretained(self).toOpaque()
+        )
 
-            // Convert the size into a 4-byte length code
-            let sourceBytes: [UInt8] = [
-                UInt8((sizeWithoutStartCodeHeader >> 24) & 0xFF),
-                UInt8((sizeWithoutStartCodeHeader >> 16) & 0xFF),
-                UInt8((sizeWithoutStartCodeHeader >> 8) & 0xFF),
-                UInt8(sizeWithoutStartCodeHeader & 0xFF)
-            ]
+        let destinationImageBufferAttributes: [String: Any] = [
+            kCVPixelBufferOpenGLESCompatibilityKey as String: false,
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
+        ]
 
-            // Replace the first 4 bytes(start code header) in the `CMBlockBuffer` with `sourceBytes`
-            // TODO: If start code header is 3 bytes, here might be wrong?
-            status = CMBlockBufferReplaceDataBytes(
-                with: sourceBytes,      // The source bytes to replace with
-                blockBuffer: videoBlock!, // The block buffer to modify
-                offsetIntoDestination: 0, // Start at the beginning
-                dataLength: 4  // Replace 4 bytes
-            )
-
-            // Create a CMSampleBuffer
-            var sbRef: CMSampleBuffer?
-            status = CMSampleBufferCreate(
-                allocator: kCFAllocatorDefault,
-                dataBuffer: videoBlock,
-                dataReady: true,
-                makeDataReadyCallback: nil,
-                refcon: nil,
-                formatDescription: videoFormatDescr!,
-                sampleCount: 1,
-                sampleTimingEntryCount: 0,
-                sampleTimingArray: nil,
-                sampleSizeEntryCount: 1,
-                sampleSizeArray: &blockLength,
-                sampleBufferOut: &sbRef
-            )
-
-            // Decode the frame
-            var flagOut = VTDecodeInfoFlags()
-            status = VTDecompressionSessionDecodeFrame(
-                session!,
-                sampleBuffer: sbRef!,
-                flags: [._EnableAsynchronousDecompression],
-                frameRefcon: Unmanaged.passRetained(frameContext).toOpaque(),
-                infoFlagsOut: &flagOut
-            )
-            print(status)
+        status = VTDecompressionSessionCreate(
+            allocator: kCFAllocatorDefault,
+            formatDescription: videoFormatDescr,
+            decoderSpecification: nil,
+            imageBufferAttributes: destinationImageBufferAttributes as CFDictionary,
+            outputCallback: &callback,
+            decompressionSessionOut: &session
+        )
+        if status != noErr {
+            print("VTDecompressionSessionCreate error: \(status)")
+            session = nil
         }
     }
 
@@ -209,120 +224,418 @@ extension IRStreamVideoDecoder {
     }
 }
 
+// MARK: - Format description / extradata parsing
 extension IRStreamVideoDecoder {
 
-    private func setupSPSAndPPS(with pCodecCtx: UnsafeMutablePointer<AVCodecContext>) {
-        guard let data = pCodecCtx.pointee.extradata,
-              spsData == nil || ppsData == nil else { return }
+    private func setupFormatDescriptionIfNeeded(from pCodecCtx: UnsafeMutablePointer<AVCodecContext>) {
+        guard videoFormatDescr == nil else { return }
 
-        let size = Int(pCodecCtx.pointee.extradata_size)
-        var tmp3 = ""
-
-        for i in 0..<size {
-            let str = String(format: " %.2X", data[Int(i)])
-            tmp3 += str
+        // Detect codec kind
+        if pCodecCtx.pointee.codec_id == AV_CODEC_ID_HEVC {
+            codecKind = .hevc
+        } else {
+            codecKind = .h264
         }
 
-        var startCodeSPSIndex = 0
-        var startCodePPSIndex = 0
+        // Reset parameter sets
+        spsList.removeAll()
+        ppsList.removeAll()
+        vpsList.removeAll()
 
-        for i in 3..<size {
-            if data[Int(i)] == 0x01, data[Int(i)-1] == 0x00, data[Int(i)-2] == 0x00, data[Int(i)-3] == 0x00 {
-                if startCodeSPSIndex == 0 {
-                    startCodeSPSIndex = i
-                } else {
-                    startCodePPSIndex = i
-                    break
-                }
-            }
-        }
-
-        let spsLength = startCodePPSIndex - startCodeSPSIndex - 4
-        let ppsLength = size - (startCodePPSIndex + 1)
-
-        let naluTypeSPS = Int(data[startCodeSPSIndex + 1] & 0x1F)
-        if naluTypeSPS == 7 {
-            spsData = Data(bytes: &data[startCodeSPSIndex + 1], count: spsLength)
-        }
-
-        let naluTypePPS = Int(data[startCodePPSIndex + 1] & 0x1F)
-        if naluTypePPS == 8 {
-            ppsData = Data(bytes: &data[startCodePPSIndex + 1], count: ppsLength)
-        }
-
-        guard let sps = spsData, let pps = ppsData else {
-            print("Failed to get data for SPS or PPS")
+        guard let extradata = pCodecCtx.pointee.extradata, pCodecCtx.pointee.extradata_size > 0 else {
+            // No extradata, assume Annex B stream; nalLengthSize default to 4
+            inputFormat = .annexB
+            nalLengthSize = 4
             return
         }
 
-        sps.withUnsafeBytes { spsPointer in
-            pps.withUnsafeBytes { ppsPointer in
+        let size = Int(pCodecCtx.pointee.extradata_size)
+        let firstByte = extradata[0]
 
-                guard let spsBaseAddress = spsPointer.bindMemory(to: UInt8.self).baseAddress,
-                      let ppsBaseAddress = ppsPointer.bindMemory(to: UInt8.self).baseAddress else {
-                    print("Failed to get base address for SPS or PPS")
-                    return
+        if codecKind == .h264 {
+            // H.264: avcC starts with 0x01
+            if firstByte == 0x01 {
+                inputFormat = .avccOrHvcc
+                _ = parseAVCC(extradata: extradata, size: size)
+            } else if isAnnexBStartCode(extradata, size: size) {
+                inputFormat = .annexB
+                parseAnnexBParameterSets(extradata: extradata, size: size, isHEVC: false)
+                nalLengthSize = 4
+            } else {
+                if !parseAVCC(extradata: extradata, size: size) {
+                    inputFormat = .annexB
+                    parseAnnexBParameterSets(extradata: extradata, size: size, isHEVC: false)
+                    nalLengthSize = 4
+                } else {
+                    inputFormat = .avccOrHvcc
                 }
+            }
 
-                let parameterSetPointers: [UnsafePointer<UInt8>] = [
-                    spsBaseAddress,
-                    ppsBaseAddress
-                ]
-                let parameterSetSizes: [Int] = [sps.count, pps.count]
+            // Use only first SPS/PPS to avoid -12712
+            guard let firstSPS = spsList.first, let firstPPS = ppsList.first else {
+                print("No SPS/PPS parsed from extradata.")
+                return
+            }
 
-                status = CMVideoFormatDescriptionCreateFromH264ParameterSets(
-                    allocator: kCFAllocatorDefault,
-                    parameterSetCount: 2,
-                    parameterSetPointers: parameterSetPointers,
-                    parameterSetSizes: parameterSetSizes,
-                    nalUnitHeaderLength: 4,
-                    formatDescriptionOut: &videoFormatDescr
-                )
+            if !(nalLengthSize == 1 || nalLengthSize == 2 || nalLengthSize == 4) {
+                nalLengthSize = 4
+            }
+
+            let headerLen = Int32(nalLengthSize)
+
+            firstSPS.withUnsafeBytes { spsRawBuf in
+                firstPPS.withUnsafeBytes { ppsRawBuf in
+                    guard
+                        let spsBase = spsRawBuf.bindMemory(to: UInt8.self).baseAddress,
+                        let ppsBase = ppsRawBuf.bindMemory(to: UInt8.self).baseAddress
+                    else { return }
+
+                    var parameterPointers: [UnsafePointer<UInt8>] = [spsBase, ppsBase]
+                    var parameterSizes: [Int] = [firstSPS.count, firstPPS.count]
+
+                    parameterPointers.withUnsafeBufferPointer { ptrs in
+                        parameterSizes.withUnsafeBufferPointer { sizes in
+                            guard let pPtr = ptrs.baseAddress, let sPtr = sizes.baseAddress else { return }
+                            status = CMVideoFormatDescriptionCreateFromH264ParameterSets(
+                                allocator: kCFAllocatorDefault,
+                                parameterSetCount: 2,
+                                parameterSetPointers: pPtr,
+                                parameterSetSizes: sPtr,
+                                nalUnitHeaderLength: headerLen,
+                                formatDescriptionOut: &videoFormatDescr
+                            )
+                        }
+                    }
+                }
+            }
+
+        } else {
+            // HEVC: hvcC (HEVCDecoderConfigurationRecord) also starts with 0x01
+            if firstByte == 0x01 {
+                inputFormat = .avccOrHvcc
+                _ = parseHVCC(extradata: extradata, size: size)
+            } else if isAnnexBStartCode(extradata, size: size) {
+                inputFormat = .annexB
+                parseAnnexBParameterSets(extradata: extradata, size: size, isHEVC: true)
+                nalLengthSize = 4
+            } else {
+                if !parseHVCC(extradata: extradata, size: size) {
+                    inputFormat = .annexB
+                    parseAnnexBParameterSets(extradata: extradata, size: size, isHEVC: true)
+                    nalLengthSize = 4
+                } else {
+                    inputFormat = .avccOrHvcc
+                }
+            }
+
+            guard let firstVPS = vpsList.first, let firstSPS = spsList.first, let firstPPS = ppsList.first else {
+                print("No VPS/SPS/PPS parsed from extradata.")
+                return
+            }
+
+            if !(nalLengthSize == 1 || nalLengthSize == 2 || nalLengthSize == 4) {
+                nalLengthSize = 4
+            }
+
+            let headerLen = Int32(nalLengthSize)
+
+            firstVPS.withUnsafeBytes { vpsRawBuf in
+                firstSPS.withUnsafeBytes { spsRawBuf in
+                    firstPPS.withUnsafeBytes { ppsRawBuf in
+                        guard
+                            let vpsBase = vpsRawBuf.bindMemory(to: UInt8.self).baseAddress,
+                            let spsBase = spsRawBuf.bindMemory(to: UInt8.self).baseAddress,
+                            let ppsBase = ppsRawBuf.bindMemory(to: UInt8.self).baseAddress
+                        else { return }
+
+                        var parameterPointers: [UnsafePointer<UInt8>] = [vpsBase, spsBase, ppsBase]
+                        var parameterSizes: [Int] = [firstVPS.count, firstSPS.count, firstPPS.count]
+
+                        parameterPointers.withUnsafeBufferPointer { ptrs in
+                            parameterSizes.withUnsafeBufferPointer { sizes in
+                                guard let pPtr = ptrs.baseAddress, let sPtr = sizes.baseAddress else { return }
+                                status = CMVideoFormatDescriptionCreateFromHEVCParameterSets(
+                                    allocator: kCFAllocatorDefault,
+                                    parameterSetCount: 3,
+                                    parameterSetPointers: pPtr,
+                                    parameterSetSizes: sPtr,
+                                    nalUnitHeaderLength: headerLen,
+                                    extensions: nil,
+                                    formatDescriptionOut: &videoFormatDescr
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
+
+        if status != noErr {
+            print("CMVideoFormatDescriptionCreate error: \(status)")
+            videoFormatDescr = nil
+        }
+    }
+
+    @discardableResult
+    private func parseAVCC(extradata: UnsafeMutablePointer<UInt8>, size: Int) -> Bool {
+        // AVCDecoderConfigurationRecord
+        guard size >= 7, extradata[0] == 1 else { return false }
+        let lengthSizeMinusOne = Int(extradata[4] & 0x03)
+        nalLengthSize = lengthSizeMinusOne + 1
+        var offset = 5
+
+        let numOfSPS = Int(extradata[offset] & 0x1F)
+        offset += 1
+
+        spsList.removeAll()
+        ppsList.removeAll()
+
+        for _ in 0..<numOfSPS {
+            if offset + 2 > size { return false }
+            let spsLength = Int(extradata[offset]) << 8 | Int(extradata[offset + 1])
+            offset += 2
+            if offset + spsLength > size { return false }
+            let sps = Data(bytes: extradata.advanced(by: offset), count: spsLength)
+            spsList.append(sps)
+            offset += spsLength
+        }
+
+        if offset + 1 > size { return false }
+        let numOfPPS = Int(extradata[offset])
+        offset += 1
+
+        for _ in 0..<numOfPPS {
+            if offset + 2 > size { return false }
+            let ppsLength = Int(extradata[offset]) << 8 | Int(extradata[offset + 1])
+            offset += 2
+            if offset + ppsLength > size { return false }
+            let pps = Data(bytes: extradata.advanced(by: offset), count: ppsLength)
+            ppsList.append(pps)
+            offset += ppsLength
+        }
+
+        return !spsList.isEmpty && !ppsList.isEmpty
+    }
+
+    // Parse HEVCDecoderConfigurationRecord (hvcC)
+    @discardableResult
+    private func parseHVCC(extradata: UnsafeMutablePointer<UInt8>, size: Int) -> Bool {
+        // Minimal parsing; reference ISO/IEC 14496-15
+        // hvcC starts with configurationVersion == 1
+        guard size >= 23, extradata[0] == 1 else { return false }
+
+        // general_profile_space.. etc are here; we mainly need lengthSizeMinusOne and arrays
+        // lengthSizeMinusOne is in byte 21 lower 2 bits
+        let lengthSizeMinusOne = Int(extradata[21] & 0x03)
+        nalLengthSize = lengthSizeMinusOne + 1
+
+        var offset = 22
+        if offset >= size { return false }
+
+        let numOfArrays = Int(extradata[offset])
+        offset += 1
+
+        spsList.removeAll()
+        ppsList.removeAll()
+        vpsList.removeAll()
+
+        for _ in 0..<numOfArrays {
+            if offset + 3 > size { return false }
+            let arrayCompletenessAndType = extradata[offset]
+            offset += 1
+            let nalUnitType = Int(arrayCompletenessAndType & 0x3F) // 6-bit type
+            let numNalus = Int(extradata[offset]) << 8 | Int(extradata[offset + 1])
+            offset += 2
+
+            for _ in 0..<numNalus {
+                if offset + 2 > size { return false }
+                let nalUnitLength = Int(extradata[offset]) << 8 | Int(extradata[offset + 1])
+                offset += 2
+                if offset + nalUnitLength > size { return false }
+                let data = Data(bytes: extradata.advanced(by: offset), count: nalUnitLength)
+                switch nalUnitType {
+                case 32: // VPS
+                    vpsList.append(data)
+                case 33: // SPS
+                    spsList.append(data)
+                case 34: // PPS
+                    ppsList.append(data)
+                default:
+                    break
+                }
+                offset += nalUnitLength
+            }
+        }
+
+        return !vpsList.isEmpty && !spsList.isEmpty && !ppsList.isEmpty
+    }
+
+    private func parseAnnexBParameterSets(extradata: UnsafeMutablePointer<UInt8>, size: Int, isHEVC: Bool) {
+        spsList.removeAll()
+        ppsList.removeAll()
+        vpsList.removeAll()
+
+        var index = 0
+        while let (range, naluType) = nextAnnexBNAL(in: extradata, size: size, start: index, isHEVC: isHEVC) {
+            if isHEVC {
+                // HEVC types: VPS(32) SPS(33) PPS(34)
+                switch naluType {
+                case 32:
+                    let vps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
+                    vpsList.append(vps)
+                case 33:
+                    let sps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
+                    spsList.append(sps)
+                case 34:
+                    let pps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
+                    ppsList.append(pps)
+                default:
+                    break
+                }
+            } else {
+                // H.264 types: SPS(7) PPS(8)
+                if naluType == 7 {
+                    let sps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
+                    spsList.append(sps)
+                } else if naluType == 8 {
+                    let pps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
+                    ppsList.append(pps)
+                }
+            }
+            index = range.upperBound
+        }
+    }
+
+    private func isAnnexBStartCode(_ ptr: UnsafeMutablePointer<UInt8>, size: Int) -> Bool {
+        if size >= 4 && memcmp(ptr, startCode4, 4) == 0 { return true }
+        if size >= 3 && memcmp(ptr, startCode3, 3) == 0 { return true }
+        return false
     }
 }
 
+// MARK: - Packet to AVCC/HVCC conversion
 extension IRStreamVideoDecoder {
 
-    private func findFirstNALUType1or5StartCodeIndex(in pointer: UnsafeMutablePointer<UInt8>?, length: Int) -> Int? {
-        guard let pointer = pointer else {
-            print("Pointer is nil")
+    private func buildAVCCSample(from packet: AVPacket) -> (UnsafePointer<UInt8>?, Int) {
+        guard let dataPtr = packet.data, packet.size > 0 else { return (nil, 0) }
+        let length = Int(packet.size)
+
+        let looksLikeAnnexB = looksLikeAnnexBBuffer(dataPtr, length: length)
+        if looksLikeAnnexB {
+            let converted = convertAnnexBToAVCC(dataPtr, length: length, nalLengthSize: nalLengthSize)
+            return converted
+        } else {
+            // Already length-prefixed (AVCC/HVCC)
+            return (UnsafePointer<UInt8>(dataPtr), length)
+        }
+    }
+
+    private func looksLikeAnnexBBuffer(_ ptr: UnsafeMutablePointer<UInt8>, length: Int) -> Bool {
+        if length >= 4 && memcmp(ptr, startCode4, 4) == 0 { return true }
+        if length >= 3 && memcmp(ptr, startCode3, 3) == 0 { return true }
+        var i = 0
+        while i + 4 <= length {
+            if memcmp(ptr.advanced(by: i), startCode4, 4) == 0 { return true }
+            if i + 3 <= length && memcmp(ptr.advanced(by: i), startCode3, 3) == 0 { return true }
+            i += 1
+        }
+        return false
+    }
+
+    private func convertAnnexBToAVCC(_ ptr: UnsafeMutablePointer<UInt8>, length: Int, nalLengthSize: Int) -> (UnsafePointer<UInt8>?, Int) {
+        var nalRanges: [(start: Int, end: Int)] = []
+        var i = 0
+        func matchStartCode(_ p: UnsafeMutablePointer<UInt8>, _ len: Int) -> Int? {
+            if len >= 4 && memcmp(p, startCode4, 4) == 0 { return 4 }
+            if len >= 3 && memcmp(p, startCode3, 3) == 0 { return 3 }
             return nil
         }
 
-        let startCode3: [UInt8] = [0x00, 0x00, 0x01]
-        let startCode4: [UInt8] = [0x00, 0x00, 0x00, 0x01]
-
-        var currentIndex = 0
-
-        while currentIndex < length {
-            // check startCode4
-            if currentIndex + 4 <= length,
-               memcmp(pointer.advanced(by: currentIndex), startCode4, 4) == 0 {
-                let nalUnitType = pointer[currentIndex + 4] & 0x1F // get nal_unit_type
-                if nalUnitType == 1 || nalUnitType == 5 {
-                    return currentIndex
-                }
-                currentIndex += 5 // skip the start code & NALU Header
+        // Find all NAL ranges (without start code)
+        while i < length {
+            guard let scLen = matchStartCode(ptr.advanced(by: i), length - i) else {
+                i += 1
                 continue
             }
-
-            // check startCode3
-            if currentIndex + 3 <= length,
-               memcmp(pointer.advanced(by: currentIndex), startCode3, 3) == 0 {
-                let nalUnitType = pointer[currentIndex + 3] & 0x1F // get nal_unit_type
-                if nalUnitType == 1 || nalUnitType == 5 {
-                    return currentIndex
+            let naluStart = i + scLen
+            var j = naluStart
+            var nextStart: Int?
+            while j < length {
+                if let _ = matchStartCode(ptr.advanced(by: j), length - j) {
+                    nextStart = j
+                    break
                 }
-                currentIndex += 4 // skip the start code & NALU Header
-                continue
+                j += 1
             }
-
-            // not found, keep going
-            currentIndex += 1
+            let naluEnd = nextStart ?? length
+            if naluEnd > naluStart {
+                nalRanges.append((start: naluStart, end: naluEnd))
+            }
+            i = naluEnd
         }
 
-        return nil
+        var total = 0
+        for r in nalRanges {
+            total += nalLengthSize + (r.end - r.start)
+        }
+        if total == 0 { return (nil, 0) }
+
+        let outPtr = UnsafeMutablePointer<UInt8>.allocate(capacity: total)
+        var offset = 0
+        for r in nalRanges {
+            let nalSize = r.end - r.start
+            // Big-endian length
+            for b in stride(from: (nalLengthSize - 1), through: 0, by: -1) {
+                outPtr[offset + (nalLengthSize - 1 - b)] = UInt8((nalSize >> (b * 8)) & 0xFF)
+            }
+            offset += nalLengthSize
+            memcpy(outPtr.advanced(by: offset), ptr.advanced(by: r.start), nalSize)
+            offset += nalSize
+        }
+        return (UnsafePointer<UInt8>(outPtr), total)
+    }
+
+    // Scan next Annex B NAL, return range without start code and NAL type
+    private func nextAnnexBNAL(in ptr: UnsafeMutablePointer<UInt8>, size: Int, start: Int, isHEVC: Bool) -> ((Range<Int>, Int))? {
+        var i = start
+        func matchStartCode(_ p: UnsafeMutablePointer<UInt8>, _ len: Int) -> Int? {
+            if len >= 4 && memcmp(p, startCode4, 4) == 0 { return 4 }
+            if len >= 3 && memcmp(p, startCode3, 3) == 0 { return 3 }
+            return nil
+        }
+
+        // Find first start code
+        var scLen1: Int?
+        while i < size {
+            if let sc = matchStartCode(ptr.advanced(by: i), size - i) {
+                scLen1 = sc
+                break
+            }
+            i += 1
+        }
+        guard let sc1 = scLen1 else { return nil }
+        let naluStart = i + sc1
+
+        // Find next start code
+        var j = naluStart
+        var nextStartIdx: Int?
+        while j < size {
+            if let _ = matchStartCode(ptr.advanced(by: j), size - j) {
+                nextStartIdx = j
+                break
+            }
+            j += 1
+        }
+        let naluEnd = nextStartIdx ?? size
+        guard naluEnd > naluStart else { return nil }
+
+        let firstByte = ptr[naluStart]
+        let naluType: Int
+        if isHEVC {
+            naluType = Int((firstByte >> 1) & 0x3F) // HEVC: 6-bit type
+        } else {
+            naluType = Int(firstByte & 0x1F) // H.264: 5-bit type
+        }
+        return (naluStart..<naluEnd, naluType)
     }
 }
