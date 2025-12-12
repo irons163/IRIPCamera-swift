@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/irons163/IRPlayer-swift",
       "state" : {
-        "revision" : "dbab2b6d01a4cf831b1188685638fbfbcef8fb70",
-        "version" : "0.4.2"
+        "revision" : "1489ac3e2fd4c3d7999e02e43b0176ebe3910236",
+        "version" : "0.5.0"
       }
     }
   ],
