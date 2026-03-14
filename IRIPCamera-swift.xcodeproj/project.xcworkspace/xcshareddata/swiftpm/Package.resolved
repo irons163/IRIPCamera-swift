@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/Alamofire/Alamofire.git",
       "state" : {
-        "revision" : "513364f870f6bfc468f9d2ff0a95caccc10044c5",
-        "version" : "5.10.2"
+        "revision" : "3f99050e75bbc6fe71fc323adabb039756680016",
+        "version" : "5.11.1"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/irons163/IRPlayer-swift",
       "state" : {
-        "revision" : "1489ac3e2fd4c3d7999e02e43b0176ebe3910236",
-        "version" : "0.5.0"
+        "revision" : "a8868b58c34ab227ffcc3ac6d2bb0ced3b91bee3",
+        "version" : "1.0.0"
       }
     }
   ],

@@ -591,7 +591,7 @@
 			repositoryURL = "https://github.com/irons163/IRPlayer-swift";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.4.2;
+				minimumVersion = 1.0.0;
 			};
 		};
 		B5CA2B612D1682F5002507B7 /* XCRemoteSwiftPackageReference "Alamofire" */ = {
