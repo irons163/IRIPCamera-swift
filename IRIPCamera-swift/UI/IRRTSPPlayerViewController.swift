@@ -11,10 +11,10 @@ import IRPlayerSwift
 class IRRTSPPlayerViewController: UIViewController, IRRTSPSettingsViewControllerDelegate {
 
     // MARK: - Properties
-    var intDisplayMode: Int = 1
+    var intDisplayMode: Int = 4
     var intCurrentCh: Int = 0
-    var aryVideoView: [UIView] = []
-    var aryDevices: [IRStreamConnectionRequest] = []
+    private var aryVideoView: [UIView] = []
+    private var aryDevices: [IRStreamConnectionRequest] = []
 
     @IBOutlet weak var firstViewConstraint: NSLayoutConstraint!
     @IBOutlet weak var secondViewConstraint: NSLayoutConstraint!
@@ -27,25 +27,20 @@ class IRRTSPPlayerViewController: UIViewController, IRRTSPSettingsViewController
 //    @IBOutlet weak var LoadingActivity: UIActivityIndicatorView!
     @IBOutlet weak var infoLabel: UILabel!
 
-    var player: IRPlayerImp!
-    var player2: IRPlayerImp!
-    var player3: IRPlayerImp!
-    var player4: IRPlayerImp!
-
-    var firstVideoView: IRRTSPMediaView!
-    var secondVideoView: IRRTSPMediaView!
-    var thirdVideoView: IRRTSPMediaView!
-    var fourthVideoView: IRRTSPMediaView!
+    private var players: [IRPlayerImp] = []
+    private var videoViews: [IRRTSPMediaView] = []
+    private var previousDisplayMode: Int = 4
 
     // MARK: - Lifecycle Methods
     override func viewDidLoad() {
         super.viewDidLoad()
 
         aryDevices = IRStreamConnectionRequestFactory.createStreamConnectionRequest()
+        loadDisplayModeFromDefaults()
 
         setupPlayers()
         initVideoView()
-        startStreamConnection(byDeviceIndex: 0)
+        startStreamsForCurrentMode()
     }
 
     deinit {
@@ -54,17 +49,11 @@ class IRRTSPPlayerViewController: UIViewController, IRRTSPSettingsViewController
 
     // MARK: - Player Setup
     func setupPlayers() {
-        player = IRPlayerImp.player()
-        configure(player: player)
-
-        player2 = IRPlayerImp.player()
-        configure(player: player2)
-
-        player3 = IRPlayerImp.player()
-        configure(player: player3)
-
-        player4 = IRPlayerImp.player()
-        configure(player: player4)
+        players = (0..<4).map { _ in
+            let player = IRPlayerImp.player()
+            configure(player: player)
+            return player
+        }
     }
 
     func configure(player: IRPlayerImp) {
@@ -91,36 +80,37 @@ class IRRTSPPlayerViewController: UIViewController, IRRTSPSettingsViewController
     }
 
     func addVideoViewToBlock() {
-        for i in 0..<4 {
-            addVideoViewToBlock(byCh: i)
+        videoViews = (0..<4).map { _ in IRRTSPMediaView() }
+        for index in 0..<4 {
+            addVideoViewToBlock(byCh: index)
         }
     }
 
     func addVideoViewToBlock(byCh ch: Int) {
-        let videoView = IRRTSPMediaView()
+        guard ch < videoViews.count, ch < players.count else { return }
+        let videoView = videoViews[ch]
         videoView.doubleTapEnable = true
+        videoView.onDoubleTap = { [weak self] in
+            self?.handleDoubleTap(on: ch)
+        }
 
         switch ch {
         case 0:
-            firstVideoView = videoView
-            firstVideoView.player = player
-            firstView.addSubview(firstVideoView)
-            addConstraints(to: firstVideoView, in: firstView)
+            videoView.player = players[ch]
+            firstView.addSubview(videoView)
+            addConstraints(to: videoView, in: firstView)
         case 1:
-            secondVideoView = videoView
-            secondVideoView.player = player2
-            secondView.addSubview(secondVideoView)
-            addConstraints(to: secondVideoView, in: secondView)
+            videoView.player = players[ch]
+            secondView.addSubview(videoView)
+            addConstraints(to: videoView, in: secondView)
         case 2:
-            thirdVideoView = videoView
-            thirdVideoView.player = player3
-            thirdView.addSubview(thirdVideoView)
-            addConstraints(to: thirdVideoView, in: thirdView)
+            videoView.player = players[ch]
+            thirdView.addSubview(videoView)
+            addConstraints(to: videoView, in: thirdView)
         case 3:
-            fourthVideoView = videoView
-            fourthVideoView.player = player4
-            fourthView.addSubview(fourthVideoView)
-            addConstraints(to: fourthVideoView, in: fourthView)
+            videoView.player = players[ch]
+            fourthView.addSubview(videoView)
+            addConstraints(to: videoView, in: fourthView)
         default:
             break
         }
@@ -137,8 +127,15 @@ class IRRTSPPlayerViewController: UIViewController, IRRTSPSettingsViewController
     }
 
     func setBlockShowOrHide(fromViewDidLoad: Bool) {
+        if intDisplayMode == 1 {
+            for (index, view) in aryVideoView.enumerated() {
+                view.isHidden = (index != intCurrentCh)
+            }
+            return
+        }
+
         for (index, view) in aryVideoView.enumerated() {
-            view.isHidden = (intDisplayMode == 1 && index != intCurrentCh)
+            view.isHidden = index >= intDisplayMode
         }
     }
 
@@ -166,10 +163,19 @@ class IRRTSPPlayerViewController: UIViewController, IRRTSPSettingsViewController
 
     // MARK: - Stream Control
     func startStreamConnection(byDeviceIndex index: Int) {
-        guard index < aryVideoView.count, index < aryDevices.count else { return }
-        let tmpView = aryVideoView[index]
-        if let tmpVideo = tmpView.subviews.first as? IRRTSPMediaView {
-            tmpVideo.startStreamConnection(with: aryDevices[index])
+        guard index < videoViews.count, index < aryDevices.count else { return }
+        let videoView = videoViews[index]
+        videoView.startStreamConnection(with: aryDevices[index])
+    }
+
+    func startStreamsForCurrentMode() {
+        if intDisplayMode == 1 {
+            startStreamConnection(byDeviceIndex: intCurrentCh)
+        } else {
+            let count = min(intDisplayMode, aryDevices.count)
+            for index in 0..<count {
+                startStreamConnection(byDeviceIndex: index)
+            }
         }
     }
 
@@ -180,12 +186,9 @@ class IRRTSPPlayerViewController: UIViewController, IRRTSPSettingsViewController
     }
 
     func stopStream(byChannel channel: Int, fromGoBack: Bool) {
-        guard channel < aryVideoView.count else { return }
-        let tmpView = aryVideoView[channel]
-        if let tmpVideo = tmpView.subviews.first as? IRRTSPMediaView {
-            tmpVideo.stopStreaming(stopForever: true)
-            tmpVideo.removeFromSuperview()
-        }
+        guard channel < videoViews.count else { return }
+        let videoView = videoViews[channel]
+        videoView.stopStreaming(stopForever: true)
     }
 
     // MARK: - Notification Handlers
@@ -193,12 +196,13 @@ class IRRTSPPlayerViewController: UIViewController, IRRTSPSettingsViewController
         guard let userInfo = notification.userInfo else { return }
 
         let state = IRState.state(fromUserInfo: userInfo)
+        let currentPlayer = notification.object as? IRPlayerImp
         switch state.current {
         case .none: infoLabel.text = "None"
         case .buffering: infoLabel.text = "Buffering..."
         case .readyToPlay:
             infoLabel.text = "Prepare"
-            player.play()
+            currentPlayer?.play()
         case .playing: infoLabel.text = "Playing"
         case .suspend: infoLabel.text = "Suspend"
         case .finished: infoLabel.text = "Finished"
@@ -220,7 +224,41 @@ class IRRTSPPlayerViewController: UIViewController, IRRTSPSettingsViewController
     // MARK: - IRRTSPSettingsViewControllerDelegate
     func updatedSettings(_ device: DeviceClass) {
         aryDevices = IRStreamConnectionRequestFactory.createStreamConnectionRequest()
-        startStreamConnection(byDeviceIndex: 0)
+        loadDisplayModeFromDefaults()
+        setBlockShowOrHide(fromViewDidLoad: false)
+        resizeViewBlock()
+        stopAllStreams(fromGoBack: false)
+        startStreamsForCurrentMode()
+    }
+
+    private func loadDisplayModeFromDefaults() {
+        let savedMode = UserDefaults.standard.integer(forKey: DISPLAY_MODE_KEY)
+        if (1...4).contains(savedMode) {
+            intDisplayMode = savedMode
+        } else {
+            intDisplayMode = 4
+        }
+    }
+
+    private func handleDoubleTap(on channel: Int) {
+        if intDisplayMode == 1 {
+            if intCurrentCh == channel {
+                intDisplayMode = previousDisplayMode
+                setBlockShowOrHide(fromViewDidLoad: false)
+                resizeViewBlock()
+            } else {
+                intCurrentCh = channel
+                setBlockShowOrHide(fromViewDidLoad: false)
+                resizeViewBlock()
+            }
+            return
+        }
+
+        previousDisplayMode = intDisplayMode
+        intCurrentCh = channel
+        intDisplayMode = 1
+        setBlockShowOrHide(fromViewDidLoad: false)
+        resizeViewBlock()
     }
 }
 

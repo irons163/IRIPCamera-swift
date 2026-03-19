@@ -9,7 +9,7 @@ import UIKit
 import IRPlayerSwift
 import CoreMotion
 
-class IRRTSPMediaView: UIView, IRStreamControllerDelegate {
+class IRRTSPMediaView: UIView, IRStreamControllerDelegate, UIGestureRecognizerDelegate {
 
     // MARK: - Properties
     @IBOutlet weak var titleBackground: UIView!
@@ -25,6 +25,7 @@ class IRRTSPMediaView: UIView, IRStreamControllerDelegate {
             guard let playerView = player.view else {
                 return
             }
+            playerView.isUserInteractionEnabled = true
             imageView = UIImageView(frame: playerView.frame)
             imageView.backgroundColor = .systemGroupedBackground
             imageView.contentMode = .scaleAspectFit
@@ -42,7 +43,10 @@ class IRRTSPMediaView: UIView, IRStreamControllerDelegate {
         }
     }
     var doubleTapEnable: Bool = false
+    var onDoubleTap: (() -> Void)?
 
+    private var contentView: UIView?
+    private var doubleTapGesture: UITapGestureRecognizer?
     private var imageView: UIImageView!
     private var streamController: IRStreamController?
     private var modes: [IRGLRenderMode]?
@@ -70,14 +74,44 @@ class IRRTSPMediaView: UIView, IRStreamControllerDelegate {
 
         if let nibObjects = Bundle.main.loadNibNamed("IRRTSPMediaView", owner: self, options: nil),
            let loadedView = nibObjects.first as? UIView {
+            contentView = loadedView
             loadedView.frame = frame
+            loadedView.isUserInteractionEnabled = true
             addSubview(loadedView)
             loadingActivity.color = UIColor(red: 56.0 / 255.0, green: 100.0 / 255.0, blue: 0.0, alpha: 1.0)
+        }
+
+        if let contentView {
+            attachDoubleTapGesture(to: contentView)
+        } else {
+            attachDoubleTapGesture(to: self)
         }
     }
 
     deinit {
         stopStreaming(stopForever: true)
+    }
+
+    @objc private func handleDoubleTap() {
+        guard doubleTapEnable else { return }
+        onDoubleTap?()
+    }
+
+    private func attachDoubleTapGesture(to view: UIView) {
+        if doubleTapGesture == nil {
+            let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap))
+            doubleTap.numberOfTapsRequired = 2
+            doubleTap.cancelsTouchesInView = false
+            doubleTap.delegate = self
+            doubleTapGesture = doubleTap
+        }
+        if let doubleTapGesture {
+            view.addGestureRecognizer(doubleTapGesture)
+        }
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
     }
 
     // MARK: - Player Setup

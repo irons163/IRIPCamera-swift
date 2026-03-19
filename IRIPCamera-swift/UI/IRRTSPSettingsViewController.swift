@@ -18,22 +18,33 @@ protocol IRRTSPSettingsViewControllerDelegate: AnyObject {
     func updatedSettings(_ device: DeviceClass)
 }
 
-class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
+class IRRTSPSettingsViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate {
 
     // MARK: - Properties
     weak var delegate: IRRTSPSettingsViewControllerDelegate?
     var device: DeviceClass = DeviceClass()
 
     @IBOutlet weak var streamConnectionTypeSwitch: UISwitch!
-    @IBOutlet weak var rtspUrlTextfield: UITextField!
+    @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var displayModeControl: UISegmentedControl!
+
+    private struct UrlItem {
+        var url: String
+        var isEnabled: Bool
+    }
+
+    private var urlItems: [UrlItem] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
         let userDefaults = UserDefaults.standard
 
         streamConnectionTypeSwitch.isOn = userDefaults.bool(forKey: ENABLE_RTSP_URL_KEY)
-        useRtspURL(streamConnectionTypeSwitch.isOn)
-        rtspUrlTextfield.text = userDefaults.string(forKey: RTSP_URL_KEY)
+        loadUrlItems(from: userDefaults)
+        setupTableView()
+        setupDisplayModeControl(with: userDefaults)
+        configureDisplayModeControl()
+        applyRtspEnabledState(streamConnectionTypeSwitch.isOn)
 
         setNavigationBarItems()
     }
@@ -76,17 +87,7 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
     }
 
     @IBAction func streamConnectionTypeChanged(_ sender: UISwitch) {
-        useRtspURL(sender.isOn)
-    }
-
-    private func useRtspURL(_ useRtspURL: Bool) {
-        if useRtspURL {
-            rtspUrlTextfield.alpha = 1.0
-            rtspUrlTextfield.isUserInteractionEnabled = true
-        } else {
-            rtspUrlTextfield.alpha = 0.3
-            rtspUrlTextfield.isUserInteractionEnabled = false
-        }
+        applyRtspEnabledState(sender.isOn)
     }
 
     private func setNavigationBarItems() {
@@ -118,16 +119,14 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
 
     @objc private func doneButtonPressed() {
         let userDefaults = UserDefaults.standard
+        let selectedDisplayMode = displayModeControl.selectedSegmentIndex + 1
+        userDefaults.set(selectedDisplayMode, forKey: DISPLAY_MODE_KEY)
         if streamConnectionTypeSwitch.isOn {
             userDefaults.set(streamConnectionTypeSwitch.isOn, forKey: ENABLE_RTSP_URL_KEY)
-            if rtspUrlTextfield.text == "demo" {
-                rtspUrlTextfield.text = "rtsp://stream.strba.sk:1935/strba/VYHLAD_JAZERO.stream"
-            } else if rtspUrlTextfield.text == "demo2" {
-                rtspUrlTextfield.text = "rtsp://807e9439d5ca.entrypoint.cloud.wowza.com:1935/app-rC94792j/068b9c9a_stream2"
-            } else if rtspUrlTextfield.text == "demo3" {
-                rtspUrlTextfield.text = "rtsp://77.110.228.219/axis-media/media.amp"
+            urlItems = urlItems.map { item in
+                UrlItem(url: normalizeDemoURL(item.url), isEnabled: item.isEnabled)
             }
-            userDefaults.set(rtspUrlTextfield.text, forKey: RTSP_URL_KEY)
+            saveUrlItems(to: userDefaults)
             userDefaults.synchronize()
             delegate?.updatedSettings(device)
             navigationController?.popViewController(animated: true)
@@ -137,7 +136,7 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
         let errors = checkEditData()
         if errors.isEmpty {
             userDefaults.set(streamConnectionTypeSwitch.isOn, forKey: ENABLE_RTSP_URL_KEY)
-            userDefaults.set(rtspUrlTextfield.text, forKey: RTSP_URL_KEY)
+            saveUrlItems(to: userDefaults)
             userDefaults.synchronize()
             delegate?.updatedSettings(device)
             navigationController?.popViewController(animated: true)
@@ -170,5 +169,117 @@ class IRRTSPSettingsViewController: UIViewController, UITextFieldDelegate {
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: NSLocalizedString("OK", comment: ""), style: .default, handler: nil))
         present(alert, animated: true, completion: nil)
+    }
+
+    private func normalizeDemoURL(_ text: String?) -> String {
+        switch text {
+        case "demo":
+            return "rtsp://stream.strba.sk:1935/strba/VYHLAD_JAZERO.stream"
+        case "demo2":
+            return "rtsp://807e9439d5ca.entrypoint.cloud.wowza.com:1935/app-rC94792j/068b9c9a_stream2"
+        case "demo3":
+            return "rtsp://77.110.228.219/axis-media/media.amp"
+        default:
+            return text ?? ""
+        }
+    }
+
+    private func normalizeDemoURL(_ text: String) -> String {
+        return normalizeDemoURL(Optional(text))
+    }
+
+    private func setupDisplayModeControl(with userDefaults: UserDefaults) {
+        let savedMode = userDefaults.integer(forKey: DISPLAY_MODE_KEY)
+        let displayMode = (1...4).contains(savedMode) ? savedMode : 4
+        displayModeControl.removeAllSegments()
+        for index in 1...4 {
+            displayModeControl.insertSegment(withTitle: "\(index)", at: index - 1, animated: false)
+        }
+        displayModeControl.selectedSegmentIndex = displayMode - 1
+    }
+
+    private func configureDisplayModeControl() {
+        displayModeControl.backgroundColor = UIColor.systemGray6
+        displayModeControl.selectedSegmentTintColor = UIColor.systemBlue
+        displayModeControl.setTitleTextAttributes([.foregroundColor: UIColor.white], for: .normal)
+        displayModeControl.setTitleTextAttributes([.foregroundColor: UIColor.white], for: .selected)
+    }
+
+    private func setupTableView() {
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.register(IRRTSPUrlTableCell.self, forCellReuseIdentifier: "IRRTSPUrlTableCell")
+        tableView.rowHeight = 44
+        tableView.isEditing = true
+        tableView.allowsSelection = false
+    }
+
+    private func applyRtspEnabledState(_ enabled: Bool) {
+        tableView.isUserInteractionEnabled = enabled
+        tableView.alpha = enabled ? 1.0 : 0.3
+    }
+
+    private func loadUrlItems(from userDefaults: UserDefaults) {
+        let urls = [
+            userDefaults.string(forKey: RTSP_URL_KEY) ?? "",
+            userDefaults.string(forKey: RTSP_URL_KEY_2) ?? "",
+            userDefaults.string(forKey: RTSP_URL_KEY_3) ?? "",
+            userDefaults.string(forKey: RTSP_URL_KEY_4) ?? ""
+        ]
+        let enables = [
+            userDefaults.object(forKey: RTSP_URL_ENABLE_KEY_1) as? Bool ?? true,
+            userDefaults.object(forKey: RTSP_URL_ENABLE_KEY_2) as? Bool ?? true,
+            userDefaults.object(forKey: RTSP_URL_ENABLE_KEY_3) as? Bool ?? true,
+            userDefaults.object(forKey: RTSP_URL_ENABLE_KEY_4) as? Bool ?? true
+        ]
+        urlItems = zip(urls, enables).map { UrlItem(url: $0.0, isEnabled: $0.1) }
+    }
+
+    private func saveUrlItems(to userDefaults: UserDefaults) {
+        let items = urlItems.count >= 4 ? urlItems : urlItems + Array(repeating: UrlItem(url: "", isEnabled: true), count: 4 - urlItems.count)
+        userDefaults.set(items[0].url, forKey: RTSP_URL_KEY)
+        userDefaults.set(items[1].url, forKey: RTSP_URL_KEY_2)
+        userDefaults.set(items[2].url, forKey: RTSP_URL_KEY_3)
+        userDefaults.set(items[3].url, forKey: RTSP_URL_KEY_4)
+        userDefaults.set(items[0].isEnabled, forKey: RTSP_URL_ENABLE_KEY_1)
+        userDefaults.set(items[1].isEnabled, forKey: RTSP_URL_ENABLE_KEY_2)
+        userDefaults.set(items[2].isEnabled, forKey: RTSP_URL_ENABLE_KEY_3)
+        userDefaults.set(items[3].isEnabled, forKey: RTSP_URL_ENABLE_KEY_4)
+    }
+
+    // MARK: - UITableViewDataSource / UITableViewDelegate
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return urlItems.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "IRRTSPUrlTableCell", for: indexPath) as? IRRTSPUrlTableCell else {
+            return UITableViewCell()
+        }
+        let item = urlItems[indexPath.row]
+        cell.showsReorderControl = true
+        cell.configure(placeholder: "RTSP URL \(indexPath.row + 1)", url: item.url, isEnabled: item.isEnabled)
+        cell.onTextChanged = { [weak self] text in
+            self?.urlItems[indexPath.row].url = text
+        }
+        cell.onSwitchChanged = { [weak self, weak cell] isOn in
+            self?.urlItems[indexPath.row].isEnabled = isOn
+            cell?.setUrlEnabled(isOn)
+        }
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
+        return true
+    }
+
+    func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
+        let movedItem = urlItems.remove(at: sourceIndexPath.row)
+        urlItems.insert(movedItem, at: destinationIndexPath.row)
+        tableView.reloadData()
+    }
+
+    func tableView(_ tableView: UITableView, editingStyleForRowAt indexPath: IndexPath) -> UITableViewCell.EditingStyle {
+        return .none
     }
 }
