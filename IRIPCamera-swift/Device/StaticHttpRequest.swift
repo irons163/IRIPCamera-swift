@@ -50,7 +50,9 @@ class HttpRequest: HttpRequesting {
     private var manager: Session
     private var requestQueue: OperationQueue
 
-    private init() {
+    // Internal (not private) so tests can exercise an isolated instance instead
+    // of mutating the shared singleton.
+    init() {
         self.manager = Session()
         self.requestQueue = OperationQueue()
     }

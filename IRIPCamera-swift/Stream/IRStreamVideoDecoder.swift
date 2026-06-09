@@ -421,14 +421,15 @@ extension IRStreamVideoDecoder {
     private func buildAVCCSample(from packet: AVPacket) -> (Data?, Int) {
         guard let dataPtr = packet.data, packet.size > 0 else { return (nil, 0) }
         let length = Int(packet.size)
-        let bytes = [UInt8](UnsafeBufferPointer(start: dataPtr, count: length))
+        // Parse over the FFmpeg buffer in place; copy once into Data only at the end.
+        let buffer = UnsafeBufferPointer(start: dataPtr, count: length)
 
-        if NALUParser.looksLikeAnnexB(bytes) {
-            let converted = NALUParser.convertAnnexBToAVCC(bytes, nalLengthSize: nalLengthSize)
+        if NALUParser.looksLikeAnnexB(buffer) {
+            let converted = NALUParser.convertAnnexBToAVCC(buffer, nalLengthSize: nalLengthSize)
             return (converted, converted.count)
         } else {
             // Wrap as Data directly; it will be copied into CMBlockBuffer later
-            return (Data(bytes), length)
+            return (Data(buffer: buffer), length)
         }
     }
 }

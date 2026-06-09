@@ -24,28 +24,37 @@ enum NALUParser {
 
     // MARK: - Start codes
 
-    static func isStartCode4(_ bytes: [UInt8], _ i: Int) -> Bool {
+    // These operate on any zero-based, integer-indexed byte collection so the
+    // decode hot path can pass an `UnsafeBufferPointer` directly (no array copy)
+    // while tests pass `[UInt8]`.
+
+    static func isStartCode4<C: RandomAccessCollection>(_ bytes: C, _ i: Int) -> Bool
+        where C.Element == UInt8, C.Index == Int {
         i + 4 <= bytes.count && bytes[i] == 0 && bytes[i + 1] == 0 && bytes[i + 2] == 0 && bytes[i + 3] == 1
     }
 
-    static func isStartCode3(_ bytes: [UInt8], _ i: Int) -> Bool {
+    static func isStartCode3<C: RandomAccessCollection>(_ bytes: C, _ i: Int) -> Bool
+        where C.Element == UInt8, C.Index == Int {
         i + 3 <= bytes.count && bytes[i] == 0 && bytes[i + 1] == 0 && bytes[i + 2] == 1
     }
 
     /// Returns the start-code length (4 or 3) at `i`, or nil if none.
-    static func matchStartCode(_ bytes: [UInt8], _ i: Int) -> Int? {
+    static func matchStartCode<C: RandomAccessCollection>(_ bytes: C, _ i: Int) -> Int?
+        where C.Element == UInt8, C.Index == Int {
         if isStartCode4(bytes, i) { return 4 }
         if isStartCode3(bytes, i) { return 3 }
         return nil
     }
 
     /// True if the buffer begins with an Annex B start code.
-    static func isAnnexBStartCode(_ bytes: [UInt8]) -> Bool {
+    static func isAnnexBStartCode<C: RandomAccessCollection>(_ bytes: C) -> Bool
+        where C.Element == UInt8, C.Index == Int {
         isStartCode4(bytes, 0) || isStartCode3(bytes, 0)
     }
 
     /// True if the buffer contains an Annex B start code anywhere.
-    static func looksLikeAnnexB(_ bytes: [UInt8]) -> Bool {
+    static func looksLikeAnnexB<C: RandomAccessCollection>(_ bytes: C) -> Bool
+        where C.Element == UInt8, C.Index == Int {
         let length = bytes.count
         if isStartCode4(bytes, 0) { return true }
         if isStartCode3(bytes, 0) { return true }
@@ -208,7 +217,8 @@ enum NALUParser {
 
     /// Converts an Annex B buffer into a length-prefixed buffer using `nalLengthSize`
     /// byte big-endian length prefixes. Returns empty `Data` if no NAL units found.
-    static func convertAnnexBToAVCC(_ bytes: [UInt8], nalLengthSize: Int) -> Data {
+    static func convertAnnexBToAVCC<C: RandomAccessCollection>(_ bytes: C, nalLengthSize: Int) -> Data
+        where C.Element == UInt8, C.Index == Int {
         let length = bytes.count
         var nalRanges: [(start: Int, end: Int)] = []
         var i = 0

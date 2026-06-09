@@ -105,8 +105,10 @@ struct ConnectorStubsTests {
     // MARK: - HttpRequest housekeeping
 
     @Test func doJsonRequestIgnoresInvalidURL() {
+        // Use an isolated instance so the shared singleton is not touched.
+        let request = HttpRequest()
         let target = NoopHttpRequestTarget()
-        HttpRequest.shared.doJsonRequest(
+        request.doJsonRequest(
             token: nil,
             url: "not a valid url",
             method: .get,
@@ -119,7 +121,8 @@ struct ConnectorStubsTests {
     }
 
     @Test func housekeepingCallsAreSafe() {
-        HttpRequest.shared.cleanCamCheck()
-        HttpRequest.shared.destroySharedInstance()
+        let request = HttpRequest()
+        request.cleanCamCheck()
+        request.destroySharedInstance()
     }
 }
