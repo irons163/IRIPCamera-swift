@@ -23,9 +23,6 @@ class FrameContext {
 final class IRStreamVideoDecoder: IRFFVideoInput {
 
     // MARK: - Properties
-    private let startCode3: [UInt8] = [0x00, 0x00, 0x01]
-    private let startCode4: [UInt8] = [0x00, 0x00, 0x00, 0x01]
-
     private var session: VTDecompressionSession?
     private var videoFormatDescr: CMFormatDescription?
     private var status: OSStatus = noErr
@@ -278,23 +275,23 @@ extension IRStreamVideoDecoder {
 
         let size = Int(pCodecCtx.pointee.extradata_size)
         let firstByte = extradata[0]
+        let bytes = [UInt8](UnsafeBufferPointer(start: extradata, count: size))
 
         if codecKind == .h264 {
             if firstByte == 0x01 {
                 inputFormat = .avccOrHvcc
-                _ = parseAVCC(extradata: extradata, size: size)
-            } else if isAnnexBStartCode(extradata, size: size) {
+                applyH264(NALUParser.parseAVCC(bytes))
+            } else if NALUParser.isAnnexBStartCode(bytes) {
                 inputFormat = .annexB
-                parseAnnexBParameterSets(extradata: extradata, size: size, isHEVC: false)
+                applyH264(NALUParser.parseAnnexBParameterSets(bytes, isHEVC: false))
                 nalLengthSize = 4
+            } else if let sets = NALUParser.parseAVCC(bytes) {
+                inputFormat = .avccOrHvcc
+                applyH264(sets)
             } else {
-                if !parseAVCC(extradata: extradata, size: size) {
-                    inputFormat = .annexB
-                    parseAnnexBParameterSets(extradata: extradata, size: size, isHEVC: false)
-                    nalLengthSize = 4
-                } else {
-                    inputFormat = .avccOrHvcc
-                }
+                inputFormat = .annexB
+                applyH264(NALUParser.parseAnnexBParameterSets(bytes, isHEVC: false))
+                nalLengthSize = 4
             }
 
             guard let firstSPS = spsList.first, let firstPPS = ppsList.first else {
@@ -337,19 +334,18 @@ extension IRStreamVideoDecoder {
         } else {
             if firstByte == 0x01 {
                 inputFormat = .avccOrHvcc
-                _ = parseHVCC(extradata: extradata, size: size)
-            } else if isAnnexBStartCode(extradata, size: size) {
+                applyHEVC(NALUParser.parseHVCC(bytes))
+            } else if NALUParser.isAnnexBStartCode(bytes) {
                 inputFormat = .annexB
-                parseAnnexBParameterSets(extradata: extradata, size: size, isHEVC: true)
+                applyHEVC(NALUParser.parseAnnexBParameterSets(bytes, isHEVC: true))
                 nalLengthSize = 4
+            } else if let sets = NALUParser.parseHVCC(bytes) {
+                inputFormat = .avccOrHvcc
+                applyHEVC(sets)
             } else {
-                if !parseHVCC(extradata: extradata, size: size) {
-                    inputFormat = .annexB
-                    parseAnnexBParameterSets(extradata: extradata, size: size, isHEVC: true)
-                    nalLengthSize = 4
-                } else {
-                    inputFormat = .avccOrHvcc
-                }
+                inputFormat = .annexB
+                applyHEVC(NALUParser.parseAnnexBParameterSets(bytes, isHEVC: true))
+                nalLengthSize = 4
             }
 
             guard let firstVPS = vpsList.first, let firstSPS = spsList.first, let firstPPS = ppsList.first else {
@@ -400,128 +396,21 @@ extension IRStreamVideoDecoder {
         }
     }
 
-    @discardableResult
-    private func parseAVCC(extradata: UnsafeMutablePointer<UInt8>, size: Int) -> Bool {
-        guard size >= 7, extradata[0] == 1 else { return false }
-        let lengthSizeMinusOne = Int(extradata[4] & 0x03)
-        nalLengthSize = lengthSizeMinusOne + 1
-        var offset = 5
-
-        let numOfSPS = Int(extradata[offset] & 0x1F)
-        offset += 1
-
-        spsList.removeAll()
-        ppsList.removeAll()
-
-        for _ in 0..<numOfSPS {
-            if offset + 2 > size { return false }
-            let spsLength = Int(extradata[offset]) << 8 | Int(extradata[offset + 1])
-            offset += 2
-            if offset + spsLength > size { return false }
-            let sps = Data(bytes: extradata.advanced(by: offset), count: spsLength)
-            spsList.append(sps)
-            offset += spsLength
-        }
-
-        if offset + 1 > size { return false }
-        let numOfPPS = Int(extradata[offset])
-        offset += 1
-
-        for _ in 0..<numOfPPS {
-            if offset + 2 > size { return false }
-            let ppsLength = Int(extradata[offset]) << 8 | Int(extradata[offset + 1])
-            offset += 2
-            if offset + ppsLength > size { return false }
-            let pps = Data(bytes: extradata.advanced(by: offset), count: ppsLength)
-            ppsList.append(pps)
-            offset += ppsLength
-        }
-
-        return !spsList.isEmpty && !ppsList.isEmpty
+    /// Applies parsed H.264 parameter sets to instance state.
+    private func applyH264(_ sets: NALUParser.ParameterSets?) {
+        guard let sets else { return }
+        spsList = sets.sps
+        ppsList = sets.pps
+        nalLengthSize = sets.nalLengthSize
     }
 
-    @discardableResult
-    private func parseHVCC(extradata: UnsafeMutablePointer<UInt8>, size: Int) -> Bool {
-        guard size >= 23, extradata[0] == 1 else { return false }
-
-        let lengthSizeMinusOne = Int(extradata[21] & 0x03)
-        nalLengthSize = lengthSizeMinusOne + 1
-
-        var offset = 22
-        if offset >= size { return false }
-
-        let numOfArrays = Int(extradata[offset])
-        offset += 1
-
-        spsList.removeAll()
-        ppsList.removeAll()
-        vpsList.removeAll()
-
-        for _ in 0..<numOfArrays {
-            if offset + 3 > size { return false }
-            let arrayCompletenessAndType = extradata[offset]
-            offset += 1
-            let nalUnitType = Int(arrayCompletenessAndType & 0x3F)
-            let numNalus = Int(extradata[offset]) << 8 | Int(extradata[offset + 1])
-            offset += 2
-
-            for _ in 0..<numNalus {
-                if offset + 2 > size { return false }
-                let nalUnitLength = Int(extradata[offset]) << 8 | Int(extradata[offset + 1])
-                offset += 2
-                if offset + nalUnitLength > size { return false }
-                let data = Data(bytes: extradata.advanced(by: offset), count: nalUnitLength)
-                switch nalUnitType {
-                case 32: vpsList.append(data)
-                case 33: spsList.append(data)
-                case 34: ppsList.append(data)
-                default: break
-                }
-                offset += nalUnitLength
-            }
-        }
-
-        return !vpsList.isEmpty && !spsList.isEmpty && !ppsList.isEmpty
-    }
-
-    private func parseAnnexBParameterSets(extradata: UnsafeMutablePointer<UInt8>, size: Int, isHEVC: Bool) {
-        spsList.removeAll()
-        ppsList.removeAll()
-        vpsList.removeAll()
-
-        var index = 0
-        while let (range, naluType) = nextAnnexBNAL(in: extradata, size: size, start: index, isHEVC: isHEVC) {
-            if isHEVC {
-                switch naluType {
-                case 32:
-                    let vps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
-                    vpsList.append(vps)
-                case 33:
-                    let sps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
-                    spsList.append(sps)
-                case 34:
-                    let pps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
-                    ppsList.append(pps)
-                default:
-                    break
-                }
-            } else {
-                if naluType == 7 {
-                    let sps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
-                    spsList.append(sps)
-                } else if naluType == 8 {
-                    let pps = Data(bytes: extradata.advanced(by: range.lowerBound), count: range.count)
-                    ppsList.append(pps)
-                }
-            }
-            index = range.upperBound
-        }
-    }
-
-    private func isAnnexBStartCode(_ ptr: UnsafeMutablePointer<UInt8>, size: Int) -> Bool {
-        if size >= 4 && memcmp(ptr, startCode4, 4) == 0 { return true }
-        if size >= 3 && memcmp(ptr, startCode3, 3) == 0 { return true }
-        return false
+    /// Applies parsed HEVC parameter sets to instance state.
+    private func applyHEVC(_ sets: NALUParser.ParameterSets?) {
+        guard let sets else { return }
+        vpsList = sets.vps
+        spsList = sets.sps
+        ppsList = sets.pps
+        nalLengthSize = sets.nalLengthSize
     }
 }
 
@@ -532,119 +421,15 @@ extension IRStreamVideoDecoder {
     private func buildAVCCSample(from packet: AVPacket) -> (Data?, Int) {
         guard let dataPtr = packet.data, packet.size > 0 else { return (nil, 0) }
         let length = Int(packet.size)
+        let bytes = [UInt8](UnsafeBufferPointer(start: dataPtr, count: length))
 
-        let looksLikeAnnexB = looksLikeAnnexBBuffer(dataPtr, length: length)
-        if looksLikeAnnexB {
-            let converted = convertAnnexBToAVCC(dataPtr, length: length, nalLengthSize: nalLengthSize)
+        if NALUParser.looksLikeAnnexB(bytes) {
+            let converted = NALUParser.convertAnnexBToAVCC(bytes, nalLengthSize: nalLengthSize)
             return (converted, converted.count)
         } else {
             // Wrap as Data directly; it will be copied into CMBlockBuffer later
-            let data = Data(bytes: dataPtr, count: length)
-            return (data, length)
+            return (Data(bytes), length)
         }
-    }
-
-    private func looksLikeAnnexBBuffer(_ ptr: UnsafeMutablePointer<UInt8>, length: Int) -> Bool {
-        if length >= 4 && memcmp(ptr, startCode4, 4) == 0 { return true }
-        if length >= 3 && memcmp(ptr, startCode3, 3) == 0 { return true }
-        var i = 0
-        while i + 4 <= length {
-            if memcmp(ptr.advanced(by: i), startCode4, 4) == 0 { return true }
-            if i + 3 <= length && memcmp(ptr.advanced(by: i), startCode3, 3) == 0 { return true }
-            i += 1
-        }
-        return false
-    }
-
-    // Convert to Data (length-prefixed)
-    private func convertAnnexBToAVCC(_ ptr: UnsafeMutablePointer<UInt8>, length: Int, nalLengthSize: Int) -> Data {
-        var nalRanges: [(start: Int, end: Int)] = []
-        var i = 0
-        func matchStartCode(_ p: UnsafeMutablePointer<UInt8>, _ len: Int) -> Int? {
-            if len >= 4 && memcmp(p, startCode4, 4) == 0 { return 4 }
-            if len >= 3 && memcmp(p, startCode3, 3) == 0 { return 3 }
-            return nil
-        }
-
-        while i < length {
-            guard let scLen = matchStartCode(ptr.advanced(by: i), length - i) else {
-                i += 1
-                continue
-            }
-            let naluStart = i + scLen
-            var j = naluStart
-            var nextStart: Int?
-            while j < length {
-                if let _ = matchStartCode(ptr.advanced(by: j), length - j) {
-                    nextStart = j
-                    break
-                }
-                j += 1
-            }
-            let naluEnd = nextStart ?? length
-            if naluEnd > naluStart {
-                nalRanges.append((start: naluStart, end: naluEnd))
-            }
-            i = naluEnd
-        }
-
-        if nalRanges.isEmpty { return Data() }
-
-        var out = Data()
-        out.reserveCapacity(nalRanges.reduce(0) { $0 + nalLengthSize + ($1.end - $1.start) })
-
-        for r in nalRanges {
-            let nalSize = r.end - r.start
-            // Write length (big-endian)
-            for b in stride(from: (nalLengthSize - 1), through: 0, by: -1) {
-                let v = UInt8((nalSize >> (b * 8)) & 0xFF)
-                out.append(v)
-            }
-            // Write NALU payload
-            out.append(UnsafeBufferPointer(start: ptr.advanced(by: r.start), count: nalSize))
-        }
-        return out
-    }
-
-    private func nextAnnexBNAL(in ptr: UnsafeMutablePointer<UInt8>, size: Int, start: Int, isHEVC: Bool) -> ((Range<Int>, Int))? {
-        var i = start
-        func matchStartCode(_ p: UnsafeMutablePointer<UInt8>, _ len: Int) -> Int? {
-            if len >= 4 && memcmp(p, startCode4, 4) == 0 { return 4 }
-            if len >= 3 && memcmp(p, startCode3, 3) == 0 { return 3 }
-            return nil
-        }
-
-        var scLen1: Int?
-        while i < size {
-            if let sc = matchStartCode(ptr.advanced(by: i), size - i) {
-                scLen1 = sc
-                break
-            }
-            i += 1
-        }
-        guard let sc1 = scLen1 else { return nil }
-        let naluStart = i + sc1
-
-        var j = naluStart
-        var nextStartIdx: Int?
-        while j < size {
-            if let _ = matchStartCode(ptr.advanced(by: j), size - j) {
-                nextStartIdx = j
-                break
-            }
-            j += 1
-        }
-        let naluEnd = nextStartIdx ?? size
-        guard naluEnd > naluStart else { return nil }
-
-        let firstByte = ptr[naluStart]
-        let naluType: Int
-        if isHEVC {
-            naluType = Int((firstByte >> 1) & 0x3F)
-        } else {
-            naluType = Int(firstByte & 0x1F)
-        }
-        return (naluStart..<naluEnd, naluType)
     }
 }
 
