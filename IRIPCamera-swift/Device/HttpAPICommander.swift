@@ -109,6 +109,9 @@ class HttpAPICommander {
     var currentErrorType: ConnectorErrorType = .authorizationError
     var isAppAndDutUnderTheSameLAN: Bool = false
 
+    /// Injectable HTTP client; defaults to the shared instance but can be replaced in tests.
+    var httpRequest: HttpRequesting = HttpRequest.shared
+
     // MARK: - Initializer
     init(address: String, port: MultiPort, user: String, password: String, scheme: String) {
         self.commandPort = MultiPort.initial()

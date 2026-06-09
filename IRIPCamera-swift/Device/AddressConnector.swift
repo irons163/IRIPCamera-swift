@@ -61,7 +61,7 @@ class AddressConnector: HttpAPICommander, HttpRequestDelegate {
             return
         }
 
-        HttpRequest.shared.doJsonRequest(
+        httpRequest.doJsonRequest(
             token: token,
             url: "",
             method: .get,
@@ -76,7 +76,7 @@ class AddressConnector: HttpAPICommander, HttpRequestDelegate {
             return
         }
 
-        HttpRequest.shared.doJsonRequest(
+        httpRequest.doJsonRequest(
             token: token,
             url: "",
             method: .get,

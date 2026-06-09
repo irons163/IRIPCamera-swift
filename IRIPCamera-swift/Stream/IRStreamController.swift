@@ -19,6 +19,26 @@ enum IRStreamControllerStatus: Int {
     case failed
 }
 
+/// Playback states the controller reacts to, decoupled from IRPlayer's `IRPlayerState`
+/// so the state machine can be exercised without an IRPlayer dependency.
+enum PlaybackState {
+    case buffering
+    case readyToPlay
+    case playing
+    case failed
+    case other
+
+    init(_ irState: IRPlayerState) {
+        switch irState {
+        case .buffering: self = .buffering
+        case .readyToPlay: self = .readyToPlay
+        case .playing: self = .playing
+        case .failed: self = .failed
+        default: self = .other
+        }
+    }
+}
+
 protocol IRStreamControllerDelegate: AnyObject {
     func connectResult(_ videoView: Any, connection: Bool, micSupport: Bool, speakerSupport: Bool)
     func showErrorMessage(_ msg: String)
@@ -73,6 +93,7 @@ class IRStreamController: NSObject {
     convenience init(device: DeviceClass) {
         self.init()
         streamConnector = IRCustomStreamConnector()
+        streamConnector?.delegate = self
         if let customStreamConnector = streamConnector as? IRCustomStreamConnector {
             customStreamConnector.deviceInfo = device
         }
@@ -156,20 +177,23 @@ class IRStreamController: NSObject {
     // MARK: - Notification Handlers
     @objc func stateAction(_ notification: Notification) {
         guard let userInfo = notification.userInfo else { return }
-
         let state = IRState.state(fromUserInfo: userInfo)
-        switch state.current {
+        handle(playbackState: PlaybackState(state.current))
+    }
+
+    /// Reacts to a playback state transition. Extracted from `stateAction` so the
+    /// state machine can be unit tested without constructing IRPlayer notifications.
+    func handle(playbackState state: PlaybackState) {
+        switch state {
         case .buffering:
             eventDelegate?.streamControllerStatusChanged(.buffering)
-            break
         case .readyToPlay:
             connectSuccess()
         case .playing:
             eventDelegate?.streamControllerStatusChanged(.playing)
         case .failed:
             reconnectToDevice()
-            break
-        default:
+        case .other:
             break
         }
     }

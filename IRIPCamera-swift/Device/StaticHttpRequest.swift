@@ -18,7 +18,31 @@ extension HttpRequestDelegate {
     func updateProgress(totalBytesRead: Int64, totalBytesExpectedToRead: Int64) { }
 }
 
-class HttpRequest {
+/// HTTP verb expressed without leaking Alamofire's type to callers/tests.
+enum HttpRequestMethod {
+    case get
+    case post
+
+    var alamofireMethod: HTTPMethod {
+        switch self {
+        case .get: return .get
+        case .post: return .post
+        }
+    }
+}
+
+/// Abstraction over `HttpRequest` so collaborators can be unit tested with a mock.
+protocol HttpRequesting: AnyObject {
+    func doJsonRequest(
+        token: String?,
+        url: String,
+        method: HttpRequestMethod,
+        callbackID: DeviceConnectorCommandStatus,
+        target: HttpRequestDelegate
+    )
+}
+
+class HttpRequest: HttpRequesting {
 
     // MARK: - Properties
     static let shared = HttpRequest()
@@ -46,7 +70,7 @@ class HttpRequest {
     func doJsonRequest(
         token: String?,
         url: String,
-        method: HTTPMethod,
+        method: HttpRequestMethod,
         callbackID: DeviceConnectorCommandStatus,
         target: HttpRequestDelegate
     ) {
@@ -69,12 +93,13 @@ class HttpRequest {
     private func doJsonHttpRequest(
         token: String?,
         url: URL,
-        method: HTTPMethod,
+        method: HttpRequestMethod,
         callbackID: DeviceConnectorCommandStatus,
         scheme: String,
         target: HttpRequestDelegate
     ) {
-        let request = URLRequest(url: changeURL(url: url, withScheme: scheme))
+        var request = URLRequest(url: changeURL(url: url, withScheme: scheme))
+        request.httpMethod = method.alamofireMethod.rawValue
 
         AF.request(request)
             .validate()
