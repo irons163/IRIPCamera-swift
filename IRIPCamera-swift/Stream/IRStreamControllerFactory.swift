@@ -10,14 +10,9 @@ import Foundation
 class IRStreamControllerFactory {
 
     static func createStreamController(by request: IRStreamConnectionRequest) -> IRStreamController {
-        var streamController: IRStreamController?
-
         if let customRequest = request as? IRCustomStreamConnectionRequest {
-            streamController = IRStreamController(device: customRequest.device)
-        } else {
-            streamController = IRStreamController(rtspURL: request.rtspUrl)
+            return IRStreamController(device: customRequest.device)
         }
-
-        return streamController!
+        return IRStreamController(rtspURL: request.rtspUrl)
     }
 }
