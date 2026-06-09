@@ -128,4 +128,71 @@ struct StreamControllerStateTests {
         try? await Task.sleep(nanoseconds: 300_000_000)
         #expect(delegate.errors.isEmpty)
     }
+
+    @Test func videoLossTriggersReconnect() async {
+        let (controller, delegate) = makeDeviceController()
+        controller.videoLoss(withErrorCode: 1, msg: "lost")
+        await waitUntil { !delegate.errors.isEmpty }
+        #expect(!delegate.errors.isEmpty)
+    }
+
+    // MARK: - Connector error mapping
+
+    @Test func connectFailMapsEveryErrorType() {
+        let (controller, delegate) = makeRTSPController()
+        controller.connectFail(byType: ConnectorErrorType.authorizationError, errorDesc: nil)
+        controller.connectFail(byType: ConnectorErrorType.notSupported, errorDesc: nil)
+        controller.connectFail(byType: ConnectorErrorType.connectionTimeout, errorDesc: nil)
+        // Each type produces exactly one (non-empty) user-facing message.
+        #expect(delegate.errors.count == 3)
+        #expect(delegate.errors.allSatisfy { !$0.isEmpty })
+    }
+
+    @Test func legacyConnectFailForwardsRawDescription() {
+        let (controller, delegate) = makeRTSPController()
+        controller.connectFail(byType: 5, errorDesc: "boom")
+        #expect(delegate.errors == ["boom"])
+    }
+
+    // MARK: - startStreaming branches
+
+    @Test func startStreamingWithoutURLReportsDisconnect() async {
+        let (controller, delegate) = makeRTSPController()
+        controller.startStreaming(with: IRStreamConnectionResponse())
+        await waitUntil { !delegate.connectResults.isEmpty }
+        #expect(delegate.connectResults == [false])
+    }
+
+    @Test func startStreamingFisheyeWithoutURLReportsDisconnect() async {
+        let (controller, delegate) = makeRTSPController()
+        let response = IRStreamConnectionResponse()
+        response.deviceModelName = "FisheyeCAM"
+        controller.startStreaming(with: response)
+        await waitUntil { !delegate.connectResults.isEmpty }
+        #expect(delegate.connectResults == [false])
+    }
+
+    // MARK: - Render modes / change stream
+
+    @Test func renderModeAccessorsAreSafeWithoutVideoView() {
+        let (controller, _) = makeRTSPController()
+        #expect(controller.getRenderModes().isEmpty)
+        #expect(controller.getCurrentRenderMode() == nil)
+
+        // createFisheyeModes builds the full fisheye mode set.
+        let modes = controller.createFisheyeModes(with: nil)
+        #expect(modes.count == 4)
+
+        // Setting a mode without a video view must not crash.
+        if let first = modes.first {
+            controller.setCurrentRenderMode(first)
+        }
+    }
+
+    @Test func changeStreamReportsDisconnect() async {
+        let (controller, delegate) = makeRTSPController()
+        controller.changeStream(1)
+        await waitUntil { !delegate.connectResults.isEmpty }
+        #expect(delegate.connectResults == [false])
+    }
 }

@@ -83,7 +83,9 @@ extension IRCustomStreamConnector: DeviceConnectorDelegate {
                              url: String,
                              ipRatio: Int) {
         if resultCode == 0 {
-            deviceInfo?.streamInfo = streamInfoArray[ch]
+            if streamInfoArray.indices.contains(ch) {
+                deviceInfo?.streamInfo = streamInfoArray[ch]
+            }
             response?.rtspURL = url
             delegate?.startStreaming(with: response)
         }

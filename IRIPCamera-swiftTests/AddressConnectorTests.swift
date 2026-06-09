@@ -32,6 +32,7 @@ private final class SpyCommanderDelegate: HttpAPICommanderDelegate {
     private(set) var loginResults: [Int] = []
     private(set) var rtspResponses: [Int] = []
     private(set) var twoWayResults: [Int] = []
+    private(set) var rtspURLChannels: [Int] = []
 
     func failedAfterRetry(_ caller: HttpAPICommander) {}
     func didLoginResult(resultCode: Int, message: String, caller: HttpAPICommander, info: [String : Any]?, address: String, port: MultiPort) {
@@ -40,7 +41,9 @@ private final class SpyCommanderDelegate: HttpAPICommanderDelegate {
     func didGetRTSPResponse(resultCode: Int, message: String) {
         rtspResponses.append(resultCode)
     }
-    func didGetRtspURLByChannel(resultCode: Int, message: String?, channel: Int, url: String, ipRatio: Int) {}
+    func didGetRtspURLByChannel(resultCode: Int, message: String?, channel: Int, url: String, ipRatio: Int) {
+        rtspURLChannels.append(channel)
+    }
     func didGetTwoWayAudioResponse(resultCode: Int, message: String) {}
     func didGetTwoWayAudioResult(resultCode: Int, url: String?, type: String?, sampleRate: Int, bps: Int) {
         twoWayResults.append(resultCode)
@@ -93,6 +96,15 @@ struct AddressConnectorTests {
         // Login retries do not go through the JSON request helper.
         #expect(mock.requests.isEmpty)
         #expect(delegate.loginResults == [-1])
+    }
+
+    @Test func getVideoStreamURLReportsThroughDelegate() {
+        let (connector, _, delegate) = makeConnector()
+
+        connector.getVideoStreamURL(byChannel: 2)
+
+        // The base address connector reports channel 0 with an empty URL.
+        #expect(delegate.rtspURLChannels == [0])
     }
 
     @Test func failureIsIgnoredAfterCancellation() {
