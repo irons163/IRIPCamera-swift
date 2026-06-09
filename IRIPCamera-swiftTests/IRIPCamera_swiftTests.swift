@@ -8,10 +8,29 @@
 import Testing
 @testable import IRIPCamera_swift
 
+/// Smoke tests covering the lightweight value types and shared constants.
 struct IRIPCamera_swiftTests {
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test func maxRetryTimesIsThree() {
+        #expect(MAX_RETRY_TIMES == 3)
     }
 
+    @Test func streamConnectionRequestDefaultsToEmptyURL() {
+        #expect(IRStreamConnectionRequest().rtspUrl.isEmpty)
+    }
+
+    @Test func customStreamConnectionRequestRetainsDevice() {
+        let device = DeviceClass()
+        device.deviceName = "cam-1"
+        let request = IRCustomStreamConnectionRequest(device: device)
+        #expect(request.device === device)
+        #expect(request.rtspUrl.isEmpty)
+    }
+
+    @Test func streamConnectionResponseStartsEmpty() {
+        let response = IRStreamConnectionResponse()
+        #expect(response.rtspURL == nil)
+        #expect(response.deviceModelName == nil)
+        #expect(response.streamsInfo == nil)
+    }
 }
